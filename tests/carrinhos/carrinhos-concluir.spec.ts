@@ -30,6 +30,9 @@ interface ContaAutenticada {
 }
 
 test.describe('Conclusão de compra - DELETE /carrinhos/concluir-compra', () => {
+  // Serial: a API permite apenas 1 carrinho ativo por usuário e o afterEach
+  // cancela os carrinhos de todas as contas do bloco; em paralelo, um teste
+  // cancelaria o carrinho de outro. A serialização é o que garante o isolamento.
   test.describe.configure({ mode: 'serial' });
 
   let admin: UsuarioCriado;

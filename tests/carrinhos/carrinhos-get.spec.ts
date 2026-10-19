@@ -23,6 +23,9 @@ import {
 } from '../helpers/usuarios';
 
 test.describe('Consulta de carrinhos - GET /carrinhos', () => {
+  // Serial: a API permite apenas 1 carrinho ativo por usuário e o afterEach
+  // cancela os carrinhos de todas as contas do bloco; em paralelo, um teste
+  // cancelaria o carrinho de outro. A serialização é o que garante o isolamento.
   test.describe.configure({ mode: 'serial' });
 
   interface ContaAutenticada {

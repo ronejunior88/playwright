@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures';
 import { fazerLogin } from '../helpers/autenticacao';
 import { criarCarrinhoTeste, cancelarCompraSeguro } from '../helpers/carrinhos';
 import {

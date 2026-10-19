@@ -1,5 +1,6 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from '../fixtures';
 import { fazerLogin } from '../helpers/autenticacao';
+import { criarCarrinhoTeste, cancelarCompraSeguro } from '../helpers/carrinhos';
 import {
   bearer,
   criarProdutoTeste,
@@ -15,6 +16,11 @@ import {
   gerarIdUnico,
   type UsuarioCriado,
 } from '../helpers/usuarios';
+
+interface ErroProdutoComCarrinho {
+  message?: string;
+  idCarrinhos?: string[];
+}
 
 test.describe('Exclusão de produtos - DELETE /produtos/{_id}', () => {
   let usuarioAdmin: UsuarioCriado;
@@ -155,8 +161,45 @@ test.describe('Exclusão de produtos - DELETE /produtos/{_id}', () => {
     expect(corpo.nome).toBe(produto.nome);
   });
 
-  test.skip(
-    'não executado nesta etapa: exclusão de produto vinculado a carrinho (requer dados de carrinho, fora do escopo da ETAPA 4)',
-    async () => {},
-  );
+  test('deve rejeitar a exclusão de produto vinculado a carrinho', async ({
+    request,
+  }) => {
+    const usuario = await criarUsuarioProdutoTeste(request, 'false');
+    const tokenUsuario = await fazerLogin(
+      request,
+      usuario.email,
+      usuario.password,
+    );
+    const produto = await criarProdutoTeste(request, tokenAdmin);
+
+    try {
+      const carrinhoId = await criarCarrinhoTeste(request, tokenUsuario, [
+        { idProduto: produto.id, quantidade: 1 },
+      ]);
+
+      const response = await request.delete(`/produtos/${produto.id}`, {
+        headers: { Authorization: bearer(tokenAdmin) },
+      });
+
+      expect(response.status()).toBe(400);
+      expect(response.headers()['content-type'] ?? '').toContain(
+        'application/json',
+      );
+
+      const body = (await response.json()) as ErroProdutoComCarrinho;
+      expect(body.message).toBe(
+        'Não é permitido excluir produto que faz parte de carrinho',
+      );
+      expect(body.idCarrinhos).toContain(carrinhoId);
+
+      const consulta = await request.get(`/produtos/${produto.id}`);
+      expect(consulta.status()).toBe(200);
+      const corpo = (await consulta.json()) as ProdutoApi;
+      expect(corpo._id).toBe(produto.id);
+    } finally {
+      await cancelarCompraSeguro(request, tokenUsuario);
+      await excluirProduto(request, tokenAdmin, produto.id);
+      await excluirUsuario(request, usuario.id);
+    }
+  });
 });

@@ -5,6 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "playwright test",
+    "test:api": "playwright test",
+    "typecheck": "tsc --noEmit",
     "report": "playwright show-report"
   },
   "repository": {

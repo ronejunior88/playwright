@@ -1,4 +1,5 @@
 import { expect, type APIRequestContext } from '@playwright/test';
+import { executarLimpeza } from './limpeza';
 
 export interface DadosUsuario {
   nome: string;
@@ -80,14 +81,7 @@ export async function excluirUsuario(
   request: APIRequestContext,
   id: string,
 ): Promise<void> {
-  try {
-    const response = await request.delete(`/usuarios/${id}`);
-    if (response.status() !== 200) {
-      console.warn(
-        `Cleanup do usuário de teste ${id} falhou (status ${response.status()}).`,
-      );
-    }
-  } catch {
-    console.warn(`Cleanup do usuário de teste ${id} falhou.`);
-  }
+  await executarLimpeza(`do usuário de teste ${id}`, () =>
+    request.delete(`/usuarios/${id}`),
+  );
 }

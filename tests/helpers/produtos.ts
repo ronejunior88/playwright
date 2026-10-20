@@ -1,4 +1,5 @@
 import { expect, type APIRequestContext } from '@playwright/test';
+import { executarLimpeza } from './limpeza';
 import { criarUsuarioTeste, type UsuarioCriado } from './usuarios';
 
 export interface DadosProduto {
@@ -237,16 +238,9 @@ export async function excluirProduto(
   token: string,
   id: string,
 ): Promise<void> {
-  try {
-    const response = await request.delete(`/produtos/${id}`, {
+  await executarLimpeza(`do produto de teste ${id}`, () =>
+    request.delete(`/produtos/${id}`, {
       headers: { Authorization: bearer(token) },
-    });
-    if (response.status() !== 200) {
-      console.warn(
-        `Cleanup do produto de teste ${id} falhou (status ${response.status()}).`,
-      );
-    }
-  } catch {
-    console.warn(`Cleanup do produto de teste ${id} falhou.`);
-  }
+    }),
+  );
 }

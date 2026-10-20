@@ -148,9 +148,6 @@ test.describe('Consulta de usuários - GET /usuarios', () => {
   }) => {
     const id = gerarIdUnico();
 
-    const consultaPrevia = await request.get(`/usuarios/${id}`);
-    expect(consultaPrevia.status()).toBe(400);
-
     const response = await request.get(`/usuarios/${id}`);
 
     expect(response.status()).toBe(400);

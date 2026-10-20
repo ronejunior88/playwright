@@ -186,9 +186,6 @@ test.describe('Consulta de produtos - GET /produtos', () => {
   }) => {
     const id = gerarIdUnico();
 
-    const consultaPrevia = await request.get(`/produtos/${id}`);
-    expect(consultaPrevia.status()).toBe(400);
-
     const response = await request.get(`/produtos/${id}`);
 
     expect(response.status()).toBe(400);

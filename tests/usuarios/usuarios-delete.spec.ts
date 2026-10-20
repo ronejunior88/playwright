@@ -27,6 +27,7 @@ test.describe('Exclusão de usuários - DELETE /usuarios/{_id}', () => {
     request,
   }) => {
     const usuario = await criarUsuarioTeste(request);
+    idsCriados.push(usuario.id);
 
     const response = await request.delete(`/usuarios/${usuario.id}`);
 

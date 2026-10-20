@@ -68,6 +68,7 @@ test.describe('Criação de usuários - POST /usuarios', () => {
     expect(primeiro.status()).toBe(201);
 
     const primeiroBody = (await primeiro.json()) as MensagemResposta;
+    expect(primeiroBody._id, 'o primeiro cadastro deve retornar um _id').toBeTruthy();
     idsCriados.push(primeiroBody._id!);
 
     const segundo = await request.post('/usuarios', { data: dados });

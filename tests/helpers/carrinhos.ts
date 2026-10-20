@@ -1,5 +1,6 @@
 import { expect, type APIRequestContext, type APIResponse } from '@playwright/test';
 import { fazerLogin } from './autenticacao';
+import { executarLimpeza } from './limpeza';
 import {
   bearer,
   criarUsuarioProdutoTeste,
@@ -236,16 +237,9 @@ export async function cancelarCompraSeguro(
   request: APIRequestContext,
   token: string,
 ): Promise<void> {
-  try {
-    const response = await request.delete('/carrinhos/cancelar-compra', {
+  await executarLimpeza('do carrinho ao cancelar a compra', () =>
+    request.delete('/carrinhos/cancelar-compra', {
       headers: { Authorization: bearer(token) },
-    });
-    if (response.status() !== 200) {
-      console.warn(
-        `Cleanup do carrinho falhou ao cancelar a compra (status ${response.status()}).`,
-      );
-    }
-  } catch {
-    console.warn('Cleanup do carrinho falhou ao cancelar a compra.');
-  }
+    }),
+  );
 }

@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures';
+import { validarMensagemComId, validarUsuario } from '../helpers/contrato';
 import {
   excluirUsuario,
   gerarEmailUnico,
@@ -38,9 +39,7 @@ test.describe('Criação de usuários - POST /usuarios', () => {
 
     const body = (await response.json()) as MensagemResposta;
     expect(body.message).toBe('Cadastro realizado com sucesso');
-    expect(body).toHaveProperty('_id');
-    expect(typeof body._id).toBe('string');
-    expect(body._id!.length).toBeGreaterThan(0);
+    validarMensagemComId(body);
 
     idsCriados.push(body._id!);
 
@@ -48,12 +47,12 @@ test.describe('Criação de usuários - POST /usuarios', () => {
     expect(consulta.status()).toBe(200);
 
     const corpo = (await consulta.json()) as UsuarioApi;
+    validarUsuario(corpo);
     expect(corpo._id).toBe(body._id);
     expect(corpo.nome).toBe(dados.nome);
     expect(corpo.email).toBe(dados.email);
     expect(corpo.administrador).toBe(dados.administrador);
-    expect(typeof corpo.password).toBe('string');
-    expect(corpo.password.length).toBeGreaterThan(0);
+    expect(corpo.password).toBe(dados.password);
   });
 
   test('deve rejeitar a criação com email duplicado', async ({ request }) => {

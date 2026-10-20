@@ -36,12 +36,13 @@ npx playwright test -g "login"             # por título
 
 ## Scripts
 
-| Script             | Descrição                                  |
-| ------------------ | ------------------------------------------ |
-| `npm test`         | Executa todos os testes.                    |
-| `npm run test:api` | Alias de `npm test` (a suíte inteira é API).|
-| `npm run typecheck`| Verifica os tipos com TypeScript.           |
-| `npm run report`   | Abre o relatório HTML.                      |
+| Script               | Descrição                                                    |
+| -------------------- | ------------------------------------------------------------ |
+| `npm test`           | Executa todos os testes (1 worker).                          |
+| `npm run test:api`   | Alias de `npm test` (a suíte inteira é API).                 |
+| `npm run test:paralelo` | Executa com 2 workers (mais rápido, pode receber **429**). |
+| `npm run typecheck`  | Verifica os tipos com TypeScript.                            |
+| `npm run report`     | Abre o relatório HTML.                                       |
 
 ## Estrutura
 
@@ -59,6 +60,7 @@ tests/
     produtos.ts
     carrinhos.ts
     diagnostico.ts            # sanitização e classificação de status para evidências
+    limpeza.ts                # exclusão com proteção contra 429 (1 tentativa extra)
 ```
 
 ## Cobertura
@@ -78,9 +80,35 @@ de conferir a persistência das mudanças com consultas de verificação.
 - Cada teste cria seus próprios dados com identificadores únicos
   (`email`/`nome`/`id` dinâmicos) e remove o que criou (`afterEach`/`afterAll`
   ou blocos `finally`).
-- A suíte não altera nem depende de dados de terceiros.
+- A suíte não altera nem depende de dados de terceiros: só apaga registros
+  criados por ela e detectáveis pelos prefixos (`usuario-test`,
+  `login-test`, `admin-cleanup`, `Produto Playwright QA`, ...).
+- Os recursos criados são **registrados imediatamente** na criação (antes de
+  qualquer operação posterior), para que uma falha no meio do teste não deixe
+  registros órfãos.
 - Por causa da regra de "1 carrinho por usuário", os blocos que criam carrinhos
-  são executados em modo `serial`.
+  são executados em modo `serial`; contas são rastreadas em duas listas
+  (`contasDoTeste`, limpa a cada teste, e `contasCriadas`, usada no
+  `afterAll`), evitando exclusões redundantes em O(n²).
+- A limpeza (`tests/helpers/limpeza.ts`) faz **no máximo 1 tentativa extra, e
+  apenas quando o primeiro retorno é HTTP 429 ou erro de rede**. Outras falhas
+  geram apenas um aviso no console e nunca mascaram a falha real do teste.
+- **Não existe limpeza global** da API: nenhum teste apaga dados que não
+  criou.
+
+## Paralelismo e limitações do ambiente
+
+- A API ServeRest é pública e compartilhada e limita a **taxa de requisições por
+  IP**. Medido nesta suíte:
+  - `--workers=2` (~20 req/s): o `GET /usuarios` do próprio *health check*
+    (apenas leitura) já retorna **HTTP 429** — é limite de taxa, não contenção
+    de dados.
+  - `--workers=1` (~10 req/s): suíte inteira **135 passed / 0 failed**.
+- Por isso o padrão é `workers: 1` (local e CI). `npm run test:paralelo`
+  mantém o modo rápido disponível para quando o ambiente permitir.
+- Se uma execução receber **429**, trate como **condição do ambiente**: limpe os
+  resíduos, aguarde a janela de rate limit e execute novamente. Asserções como
+  `Expected: 201 / Received: 429` **não** indicam defeito do teste.
 
 ## Relatórios
 
@@ -176,9 +204,9 @@ Para baixar os relatórios no GitHub: na execução do workflow, seção
 
 ## Observações
 
-- A API é pública e compartilhada: paralelismo alto pode retornar **HTTP 429**.
-  Por isso a configuração limita o paralelismo (`workers: 2` localmente e
-  `1` no CI).
+- A API é pública e compartilhada: uma taxa de requisições alta retorna
+  **HTTP 429**. Por isso a configuração usa `workers: 1`; o modo paralelo
+  (`npm run test:paralelo`) é opt-in e pode falhar por limite de ambiente.
 - Nenhum token, senha real ou segredo é versionado; as credenciais usadas nos
   testes são fictícias e geradas em tempo de execução.
 - Os relatórios são gerados apenas durante a execução e nunca versionados.

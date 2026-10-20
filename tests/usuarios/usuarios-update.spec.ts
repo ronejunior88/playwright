@@ -33,14 +33,17 @@ test.describe('Atualização de usuários - PUT /usuarios/{_id}', () => {
   test('deve atualizar um usuário existente e persistir as alterações', async ({
     request,
   }) => {
+    const usuario = await criarUsuarioTeste(request);
+    idsCriados.push(usuario.id);
+
     const dadosAtualizados: DadosUsuario = {
-      nome: `${usuarioBase.nome} Atualizado`,
+      nome: `${usuario.nome} Atualizado`,
       email: gerarEmailUnico('usuario-atualizado'),
       password: 'SenhaAtualizada@123',
       administrador: 'true',
     };
 
-    const response = await request.put(`/usuarios/${usuarioBase.id}`, {
+    const response = await request.put(`/usuarios/${usuario.id}`, {
       data: dadosAtualizados,
     });
 
@@ -50,10 +53,11 @@ test.describe('Atualização de usuários - PUT /usuarios/{_id}', () => {
     const body = (await response.json()) as MensagemResposta;
     expect(body.message).toBe('Registro alterado com sucesso');
 
-    const consulta = await request.get(`/usuarios/${usuarioBase.id}`);
+    const consulta = await request.get(`/usuarios/${usuario.id}`);
     expect(consulta.status()).toBe(200);
 
     const corpo = (await consulta.json()) as UsuarioApi;
+    expect(corpo._id).toBe(usuario.id);
     expect(corpo.nome).toBe(dadosAtualizados.nome);
     expect(corpo.email).toBe(dadosAtualizados.email);
     expect(corpo.administrador).toBe(dadosAtualizados.administrador);

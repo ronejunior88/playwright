@@ -42,7 +42,8 @@ test.describe('Consulta de carrinhos - GET /carrinhos', () => {
 
   let admin: UsuarioCriado;
   let tokenAdmin: string;
-  const contas: ContaAutenticada[] = [];
+  const contasCriadas: ContaAutenticada[] = [];
+  let contasDoTeste: ContaAutenticada[] = [];
   const produtosCriados: ProdutoCriado[] = [];
 
   test.beforeAll(async ({ request }) => {
@@ -51,20 +52,24 @@ test.describe('Consulta de carrinhos - GET /carrinhos', () => {
     tokenAdmin = conta.token;
   });
 
+  test.beforeEach(() => {
+    contasDoTeste = [];
+  });
+
   test.afterEach(async ({ request }) => {
-    for (const conta of contas) {
+    for (const conta of contasDoTeste) {
       await cancelarCompraSeguro(request, conta.token);
     }
   });
 
   test.afterAll(async ({ request }) => {
-    for (const conta of contas) {
+    for (const conta of contasCriadas) {
       await cancelarCompraSeguro(request, conta.token);
     }
     for (const produto of produtosCriados) {
       await excluirProduto(request, tokenAdmin, produto.id);
     }
-    for (const conta of contas) {
+    for (const conta of contasCriadas) {
       await excluirUsuario(request, conta.usuario.id);
     }
     await excluirUsuario(request, admin.id);
@@ -79,14 +84,16 @@ test.describe('Consulta de carrinhos - GET /carrinhos', () => {
       preco: opcoes.preco,
       quantidade: opcoes.estoque,
     });
+
+    contasCriadas.push(conta);
+    contasDoTeste.push(conta);
+    produtosCriados.push(produto);
+
     const item: ItemCarrinho = {
       idProduto: produto.id,
       quantidade: opcoes.compra,
     };
     const carrinhoId = await criarCarrinhoTeste(request, conta.token, [item]);
-
-    contas.push(conta);
-    produtosCriados.push(produto);
 
     return { ...conta, produto, item, carrinhoId };
   }

@@ -41,7 +41,8 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
 
   let admin: UsuarioCriado;
   let tokenAdmin: string;
-  const contas: ContaAutenticada[] = [];
+  const contasCriadas: ContaAutenticada[] = [];
+  let contasDoTeste: ContaAutenticada[] = [];
   const produtosCriados: ProdutoCriado[] = [];
 
   test.beforeAll(async ({ request }) => {
@@ -50,20 +51,24 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
     tokenAdmin = conta.token;
   });
 
+  test.beforeEach(() => {
+    contasDoTeste = [];
+  });
+
   test.afterEach(async ({ request }) => {
-    for (const conta of contas) {
+    for (const conta of contasDoTeste) {
       await cancelarCompraSeguro(request, conta.token);
     }
   });
 
   test.afterAll(async ({ request }) => {
-    for (const conta of contas) {
+    for (const conta of contasCriadas) {
       await cancelarCompraSeguro(request, conta.token);
     }
     for (const produto of produtosCriados) {
       await excluirProduto(request, tokenAdmin, produto.id);
     }
-    for (const conta of contas) {
+    for (const conta of contasCriadas) {
       await excluirUsuario(request, conta.usuario.id);
     }
     await excluirUsuario(request, admin.id);
@@ -73,7 +78,8 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
     request: APIRequestContext,
   ): Promise<ContaAutenticada> {
     const conta = await criarUsuarioAutenticado(request, 'false');
-    contas.push(conta);
+    contasCriadas.push(conta);
+    contasDoTeste.push(conta);
     return conta;
   }
 
@@ -340,24 +346,26 @@ test.describe('Criação de carrinhos - corpo de sucesso - POST /carrinhos', () 
       quantidade: 4,
     });
 
-    const response = await request.post('/carrinhos', {
-      data: { produtos: [{ idProduto: produto.id, quantidade: 1 }] },
-      headers: { Authorization: bearer(conta.token) },
-    });
+    try {
+      const response = await request.post('/carrinhos', {
+        data: { produtos: [{ idProduto: produto.id, quantidade: 1 }] },
+        headers: { Authorization: bearer(conta.token) },
+      });
 
-    expect(response.status()).toBe(201);
-    expect(response.headers()['content-type'] ?? '').toContain(
-      'application/json',
-    );
+      expect(response.status()).toBe(201);
+      expect(response.headers()['content-type'] ?? '').toContain(
+        'application/json',
+      );
 
-    const body = (await response.json()) as MensagemCarrinho;
-    expect(body.message).toBe('Cadastro realizado com sucesso');
-    expect(typeof body._id).toBe('string');
-    expect(body._id!.length).toBeGreaterThan(0);
-
-    await cancelarCompraSeguro(request, conta.token);
-    await excluirProduto(request, adminConta.token, produto.id);
-    await excluirUsuario(request, conta.usuario.id);
-    await excluirUsuario(request, adminConta.usuario.id);
+      const body = (await response.json()) as MensagemCarrinho;
+      expect(body.message).toBe('Cadastro realizado com sucesso');
+      expect(typeof body._id).toBe('string');
+      expect(body._id!.length).toBeGreaterThan(0);
+    } finally {
+      await cancelarCompraSeguro(request, conta.token);
+      await excluirProduto(request, adminConta.token, produto.id);
+      await excluirUsuario(request, conta.usuario.id);
+      await excluirUsuario(request, adminConta.usuario.id);
+    }
   });
 });

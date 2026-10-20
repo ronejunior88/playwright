@@ -31,11 +31,10 @@ test.describe('Health check da API ServeRest', () => {
     expect(body).toHaveProperty('usuarios');
     expect(Array.isArray(body.usuarios)).toBe(true);
 
-    if (body.usuarios.length > 0) {
-      const primeiroUsuario = body.usuarios[0];
-      expect(typeof primeiroUsuario._id).toBe('string');
-      expect(typeof primeiroUsuario.nome).toBe('string');
-      expect(typeof primeiroUsuario.email).toBe('string');
+    for (const usuario of body.usuarios) {
+      expect(typeof usuario._id).toBe('string');
+      expect(typeof usuario.nome).toBe('string');
+      expect(typeof usuario.email).toBe('string');
     }
   });
 });

@@ -38,7 +38,8 @@ test.describe('Conclusão de compra - DELETE /carrinhos/concluir-compra', () => 
 
   let admin: UsuarioCriado;
   let tokenAdmin: string;
-  const contas: ContaAutenticada[] = [];
+  const contasCriadas: ContaAutenticada[] = [];
+  let contasDoTeste: ContaAutenticada[] = [];
   const produtosCriados: ProdutoCriado[] = [];
 
   test.beforeAll(async ({ request }) => {
@@ -47,20 +48,24 @@ test.describe('Conclusão de compra - DELETE /carrinhos/concluir-compra', () => 
     tokenAdmin = conta.token;
   });
 
+  test.beforeEach(() => {
+    contasDoTeste = [];
+  });
+
   test.afterEach(async ({ request }) => {
-    for (const conta of contas) {
+    for (const conta of contasDoTeste) {
       await cancelarCompraSeguro(request, conta.token);
     }
   });
 
   test.afterAll(async ({ request }) => {
-    for (const conta of contas) {
+    for (const conta of contasCriadas) {
       await cancelarCompraSeguro(request, conta.token);
     }
     for (const produto of produtosCriados) {
       await excluirProduto(request, tokenAdmin, produto.id);
     }
-    for (const conta of contas) {
+    for (const conta of contasCriadas) {
       await excluirUsuario(request, conta.usuario.id);
     }
     await excluirUsuario(request, admin.id);
@@ -70,7 +75,8 @@ test.describe('Conclusão de compra - DELETE /carrinhos/concluir-compra', () => 
     request: APIRequestContext,
   ): Promise<ContaAutenticada> {
     const conta = await criarUsuarioAutenticado(request, 'false');
-    contas.push(conta);
+    contasCriadas.push(conta);
+    contasDoTeste.push(conta);
     return conta;
   }
 

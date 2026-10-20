@@ -59,6 +59,7 @@ test.describe('Exclusão de produtos - DELETE /produtos/{_id}', () => {
     request,
   }) => {
     const produto = await criarProdutoTeste(request, tokenAdmin);
+    idsCriados.push(produto.id);
 
     const response = await request.delete(`/produtos/${produto.id}`, {
       headers: { Authorization: bearer(tokenAdmin) },

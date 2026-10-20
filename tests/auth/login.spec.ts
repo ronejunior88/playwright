@@ -1,5 +1,10 @@
-import { type APIRequestContext } from '@playwright/test';
 import { expect, test } from '../fixtures';
+import {
+  criarUsuarioTeste,
+  excluirUsuario,
+  gerarEmailUnico,
+  type UsuarioCriado,
+} from '../helpers/usuarios';
 
 interface RespostaLogin {
   message?: string;
@@ -8,45 +13,11 @@ interface RespostaLogin {
   password?: string;
 }
 
-interface UsuarioCriado {
-  id: string;
-  email: string;
-  password: string;
-}
-
-const SENHA_USUARIO_TESTE = 'SenhaTeste@123';
-
-function gerarEmailUnico(prefixo: string): string {
-  const sufixo = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  return `${prefixo}-${sufixo}@example.com`;
-}
-
-async function criarUsuarioTeste(
-  request: APIRequestContext,
-  email: string,
-): Promise<UsuarioCriado> {
-  const response = await request.post('/usuarios', {
-    data: {
-      nome: 'Usuário de Teste do Login',
-      email,
-      password: SENHA_USUARIO_TESTE,
-      administrador: 'true',
-    },
-  });
-
-  expect(response.status()).toBe(201);
-
-  const body = (await response.json()) as { message: string; _id: string };
-  expect(body).toHaveProperty('_id');
-
-  return { id: body._id, email, password: SENHA_USUARIO_TESTE };
-}
-
 test.describe('Login da API ServeRest', () => {
   let usuarioTeste: UsuarioCriado;
 
   test.beforeAll(async ({ request }) => {
-    usuarioTeste = await criarUsuarioTeste(request, gerarEmailUnico('login-test'));
+    usuarioTeste = await criarUsuarioTeste(request, { administrador: 'true' });
   });
 
   test.afterAll(async ({ request }) => {
@@ -54,16 +25,7 @@ test.describe('Login da API ServeRest', () => {
       return;
     }
 
-    try {
-      const response = await request.delete(`/usuarios/${usuarioTeste.id}`);
-      if (response.status() !== 200) {
-        console.warn(
-          `Cleanup do usuário de teste do login falhou (status ${response.status()}).`,
-        );
-      }
-    } catch {
-      console.warn('Cleanup do usuário de teste do login falhou.');
-    }
+    await excluirUsuario(request, usuarioTeste.id);
   });
 
   test('deve realizar login com sucesso e retornar um token Bearer', async ({

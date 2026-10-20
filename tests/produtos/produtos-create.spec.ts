@@ -6,6 +6,7 @@ import {
   criarProdutoTeste,
   criarUsuarioProdutoTeste,
   excluirProduto,
+  gerarNomeProdutoUnico,
   MENSAGEM_ROTA_ADMIN,
   MENSAGEM_TOKEN_INVALIDO,
   type ErroValidacaoProduto,
@@ -127,6 +128,46 @@ test.describe('Criação de produtos - POST /produtos', () => {
     const lista = (await consulta.json()) as ListaProdutos;
     expect(lista.quantidade).toBe(0);
   });
+
+  const CABECALHOS_AUTH_MALFORMADO = [
+    { rotulo: 'apenas "Bearer"', valor: 'Bearer' },
+    { rotulo: 'valor vazio', valor: '' },
+    { rotulo: 'token sem prefixo "Bearer"', valor: 'token-sem-prefixo' },
+  ];
+
+  for (const caso of CABECALHOS_AUTH_MALFORMADO) {
+    test(`deve rejeitar a criação com Authorization malformado (${caso.rotulo})`, async ({
+      request,
+    }) => {
+      const payload = {
+        nome: gerarNomeProdutoUnico('Produto Auth Malformado'),
+        preco: 100,
+        descricao: 'Descrição com cabeçalho Authorization malformado',
+        quantidade: 1,
+      };
+
+      const response = await request.post('/produtos', {
+        data: payload,
+        headers: { Authorization: caso.valor },
+      });
+
+      expect(response.status()).toBe(401);
+      expect(response.headers()['content-type'] ?? '').toContain(
+        'application/json',
+      );
+
+      const body = (await response.json()) as MensagemResposta;
+      expect(body.message).toBe(MENSAGEM_TOKEN_INVALIDO);
+      expect(body).not.toHaveProperty('_id');
+
+      const consulta = await request.get('/produtos', {
+        params: { nome: payload.nome },
+      });
+      expect(consulta.status()).toBe(200);
+      const lista = (await consulta.json()) as ListaProdutos;
+      expect(lista.quantidade).toBe(0);
+    });
+  }
 
   test('deve rejeitar a criação com usuário comum (não administrador)', async ({
     request,

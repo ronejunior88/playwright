@@ -1,4 +1,9 @@
 import { expect, test } from '../fixtures';
+import {
+  validarErroDeCampos,
+  validarListaProdutos,
+  validarProduto,
+} from '../helpers/contrato';
 import { fazerLogin } from '../helpers/autenticacao';
 import {
   criarProdutoTeste,
@@ -49,13 +54,8 @@ test.describe('Consulta de produtos - GET /produtos', () => {
     expect(body).toHaveProperty('produtos');
     expect(Array.isArray(body.produtos)).toBe(true);
 
-    for (const produto of body.produtos) {
-      expect(typeof produto._id).toBe('string');
-      expect(typeof produto.nome).toBe('string');
-      expect(typeof produto.preco).toBe('number');
-      expect(typeof produto.descricao).toBe('string');
-      expect(typeof produto.quantidade).toBe('number');
-    }
+    validarListaProdutos(body);
+    expect(body.quantidade).toBe(body.produtos.length);
   });
 
   test('deve retornar somente o produto esperado ao filtrar por id', async ({
@@ -174,11 +174,31 @@ test.describe('Consulta de produtos - GET /produtos', () => {
     expect(response.headers()['content-type'] ?? '').toContain('application/json');
 
     const body = (await response.json()) as ProdutoApi;
+    validarProduto(body);
     expect(body._id).toBe(produto.id);
     expect(body.nome).toBe(produto.nome);
     expect(body.preco).toBe(produto.preco);
     expect(body.descricao).toBe(produto.descricao);
     expect(body.quantidade).toBe(produto.quantidade);
+  });
+
+  test('deve rejeitar filtro de query com chave não permitida', async ({
+    request,
+  }) => {
+    const response = await request.get('/produtos', {
+      params: { chave_nao_documentada: '1' },
+    });
+
+    expect(response.status()).toBe(400);
+    expect(response.headers()['content-type'] ?? '').toContain('application/json');
+
+    const body = (await response.json()) as Record<string, string>;
+    validarErroDeCampos(body);
+    expect(body.chave_nao_documentada).toBe(
+      'chave_nao_documentada não é permitido',
+    );
+    expect(body).not.toHaveProperty('produtos');
+    expect(body).not.toHaveProperty('quantidade');
   });
 
   test('deve retornar erro ao consultar produto inexistente', async ({

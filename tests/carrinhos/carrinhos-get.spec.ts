@@ -1,6 +1,11 @@
 import { type APIRequestContext } from '@playwright/test';
 import { expect, test } from '../fixtures';
 import {
+  validarCarrinho,
+  validarErroDeCampos,
+  validarListaCarrinhos,
+} from '../helpers/contrato';
+import {
   cancelarCompraSeguro,
   criarCarrinhoTeste,
   criarUsuarioAutenticado,
@@ -105,19 +110,7 @@ test.describe('Consulta de carrinhos - GET /carrinhos', () => {
     expect(Array.isArray(lista.carrinhos)).toBe(true);
     expect(lista.quantidade).toBe(lista.carrinhos.length);
 
-    for (const carrinho of lista.carrinhos) {
-      expect(typeof carrinho._id).toBe('string');
-      expect(typeof carrinho.idUsuario).toBe('string');
-      expect(typeof carrinho.precoTotal).toBe('number');
-      expect(typeof carrinho.quantidadeTotal).toBe('number');
-      expect(Array.isArray(carrinho.produtos)).toBe(true);
-
-      for (const item of carrinho.produtos) {
-        expect(typeof item.idProduto).toBe('string');
-        expect(typeof item.quantidade).toBe('number');
-        expect(typeof item.precoUnitario).toBe('number');
-      }
-    }
+    validarListaCarrinhos(lista);
   });
 
   test('deve filtrar carrinhos por _id', async ({ request }) => {
@@ -195,6 +188,33 @@ test.describe('Consulta de carrinhos - GET /carrinhos', () => {
     ).toBe(true);
   });
 
+  test('deve filtrar carrinhos por precoTotal e quantidadeTotal combinados', async ({
+    request,
+  }) => {
+    const preco = 137;
+    const compra = 4;
+    const cenario = await prepararCarrinho(request, {
+      preco,
+      estoque: 10,
+      compra,
+    });
+
+    const precoTotalEsperado = preco * compra;
+    const lista = await listarCarrinhos(request, {
+      precoTotal: String(precoTotalEsperado),
+      quantidadeTotal: String(compra),
+    });
+
+    expect(lista.quantidade).toBeGreaterThanOrEqual(1);
+    for (const carrinho of lista.carrinhos) {
+      expect(carrinho.precoTotal).toBe(precoTotalEsperado);
+      expect(carrinho.quantidadeTotal).toBe(compra);
+    }
+    expect(
+      lista.carrinhos.some((carrinho) => carrinho._id === cenario.carrinhoId),
+    ).toBe(true);
+  });
+
   test('deve retornar lista vazia ao filtrar por _id inexistente', async ({
     request,
   }) => {
@@ -202,6 +222,27 @@ test.describe('Consulta de carrinhos - GET /carrinhos', () => {
 
     expect(lista.quantidade).toBe(0);
     expect(lista.carrinhos).toHaveLength(0);
+  });
+
+  test('deve rejeitar filtro de query com chave não permitida', async ({
+    request,
+  }) => {
+    const response = await request.get('/carrinhos', {
+      params: { chave_nao_documentada: '1' },
+    });
+
+    expect(response.status()).toBe(400);
+    expect(response.headers()['content-type'] ?? '').toContain(
+      'application/json',
+    );
+
+    const body = (await response.json()) as Record<string, string>;
+    validarErroDeCampos(body);
+    expect(body.chave_nao_documentada).toBe(
+      'chave_nao_documentada não é permitido',
+    );
+    expect(body).not.toHaveProperty('carrinhos');
+    expect(body).not.toHaveProperty('quantidade');
   });
 
   test('deve consultar um carrinho por id válido com cálculos corretos', async ({
@@ -215,6 +256,7 @@ test.describe('Consulta de carrinhos - GET /carrinhos', () => {
 
     const carrinho = await obterCarrinho(request, cenario.carrinhoId);
 
+    validarCarrinho(carrinho);
     expect(carrinho._id).toBe(cenario.carrinhoId);
     expect(carrinho.idUsuario).toBe(cenario.usuario.id);
     expect(carrinho.produtos).toHaveLength(1);

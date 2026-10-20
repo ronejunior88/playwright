@@ -59,8 +59,12 @@ tests/
     usuarios.ts
     produtos.ts
     carrinhos.ts
+    contrato.ts               # validadores de contrato centralizados
     diagnostico.ts            # sanitização e classificação de status para evidências
     limpeza.ts                # exclusão com proteção contra 429 (1 tentativa extra)
+docs/
+  traceability-matrix.md      # matriz requisito x cenário x arquivo (99 requisitos)
+  coverage-analysis.md        # cobertura agregada e lacunas por risco
 ```
 
 ## Cobertura
@@ -68,12 +72,17 @@ tests/
 | Rota         | Cenários cobertos                                                        |
 | ------------ | ------------------------------------------------------------------------ |
 | `/login`     | sucesso, senha incorreta, email inexistente, payload inválido            |
-| `/usuarios`  | listagem, filtros, consulta, criação, atualização, exclusão e validações |
-| `/produtos`  | listagem, filtros, consulta, criação, atualização, exclusão e validações |
-| `/carrinhos` | listagem, filtros, criação, regras de negócio, concluir e cancelar compra |
+| `/usuarios`  | listagem, filtros (`_id`, `nome`, `email`, `password`, `administrador`, combinados), consulta, criação, atualização, exclusão e validações |
+| `/produtos`  | listagem, filtros (`_id`, `nome`, `preco`, `descricao`, `quantidade` e combinados), consulta, criação, atualização, exclusão, token e permissões, validações |
+| `/carrinhos` | listagem, filtros (`_id`, `idUsuario`, `precoTotal`, `quantidadeTotal` e combinados), criação, regras de negócio, concluir e cancelar compra |
 
 Os testes validam **status HTTP, corpo e mensagens** de sucesso e de erro, além
-de conferir a persistência das mudanças com consultas de verificação.
+de conferir a persistência das mudanças com consultas de verificação. As
+validações de contrato ficam centralizadas em `tests/helpers/contrato.ts`.
+
+O rastreio completo (requisito → cenário → arquivo → resultado) e a análise de
+lacunas por risco estão em [`docs/traceability-matrix.md`](docs/traceability-matrix.md)
+e [`docs/coverage-analysis.md`](docs/coverage-analysis.md).
 
 ## Dados e isolamento
 
@@ -103,7 +112,7 @@ de conferir a persistência das mudanças com consultas de verificação.
   - `--workers=2` (~20 req/s): o `GET /usuarios` do próprio *health check*
     (apenas leitura) já retorna **HTTP 429** — é limite de taxa, não contenção
     de dados.
-  - `--workers=1` (~10 req/s): suíte inteira **135 passed / 0 failed**.
+  - `--workers=1` (~10 req/s): suíte inteira **144 passed / 0 failed**.
 - Por isso o padrão é `workers: 1` (local e CI). `npm run test:paralelo`
   mantém o modo rápido disponível para quando o ambiente permitir.
 - Se uma execução receber **429**, trate como **condição do ambiente**: limpe os

@@ -13,7 +13,7 @@ interface ListaUsuarios {
 }
 
 test.describe('Health check da API ServeRest', () => {
-  test('deve retornar a lista de usuários com estrutura válida', async ({
+  test('deve retornar a lista de usuários com estrutura válida @smoke @critico', async ({
     request,
   }) => {
     const response = await request.get('/usuarios');

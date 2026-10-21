@@ -23,7 +23,7 @@ test.describe('Exclusão de usuários - DELETE /usuarios/{_id}', () => {
     }
   });
 
-  test('deve excluir um usuário existente e remover o registro', async ({
+  test('deve excluir um usuário existente e remover o registro @critico', async ({
     request,
   }) => {
     const usuario = await criarUsuarioTeste(request);
@@ -58,7 +58,7 @@ test.describe('Exclusão de usuários - DELETE /usuarios/{_id}', () => {
     expect(body.message).toBe('Nenhum registro excluído');
   });
 
-  test('deve rejeitar a exclusão de usuário com carrinho cadastrado', async ({
+  test('deve rejeitar a exclusão de usuário com carrinho cadastrado @critico', async ({
     request,
   }) => {
     const admin = await criarUsuarioTeste(request, { administrador: 'true' });

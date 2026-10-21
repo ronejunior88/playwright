@@ -92,7 +92,7 @@ test.describe('Conclusão de compra - DELETE /carrinhos/concluir-compra', () => 
     return produto;
   }
 
-  test('deve concluir a compra, remover o carrinho e manter o estoque reduzido', async ({
+  test('deve concluir a compra, remover o carrinho e manter o estoque reduzido @critico', async ({
     request,
   }) => {
     const conta = await novaConta(request);

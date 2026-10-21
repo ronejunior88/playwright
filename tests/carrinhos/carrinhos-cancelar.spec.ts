@@ -92,7 +92,7 @@ test.describe('Cancelamento de compra - DELETE /carrinhos/cancelar-compra', () =
     return produto;
   }
 
-  test('deve cancelar a compra, remover o carrinho e repor o estoque', async ({
+  test('deve cancelar a compra, remover o carrinho e repor o estoque @critico', async ({
     request,
   }) => {
     const conta = await novaConta(request);
@@ -175,7 +175,7 @@ test.describe('Cancelamento de compra - DELETE /carrinhos/cancelar-compra', () =
     expect(body.message).toBe(MENSAGEM_TOKEN_CARRINHO);
   });
 
-  test('não deve repor o estoque duas vezes ao cancelar novamente', async ({
+  test('não deve repor o estoque duas vezes ao cancelar novamente @critico', async ({
     request,
   }) => {
     const conta = await novaConta(request);

@@ -30,7 +30,7 @@ test.describe('Atualização de usuários - PUT /usuarios/{_id}', () => {
     await excluirUsuario(request, usuarioBase.id);
   });
 
-  test('deve atualizar um usuário existente e persistir as alterações', async ({
+  test('deve atualizar um usuário existente e persistir as alterações @critico', async ({
     request,
   }) => {
     const usuario = await criarUsuarioTeste(request);

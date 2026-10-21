@@ -36,6 +36,9 @@ Critérios de classificação:
 | Respostas HTTP documentadas | 45 (200 × 17, 201 × 5, 400 × 13, 401 × 7, 403 × 3) |
 | Requisitos rastreados | 99 |
 | Testes da suíte | 144 em 15 arquivos `*.spec.ts` |
+| Testes com `@critico` (risco alto) | 25 |
+| Testes com `@smoke` (subconjunto dos críticos) | 5 |
+| Grupos de regressão | smoke (5), críticos (25), completa (144) — ver `docs/regression-strategy.md` |
 | Testes adicionados na ETAPA 9 | 9 |
 | Cenários de validação de payload (erro por campo) | 57 (login 5, usuários 16, produtos 26, carrinhos 10) |
 

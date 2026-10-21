@@ -20,7 +20,7 @@ test.describe('Criação de usuários - POST /usuarios', () => {
     }
   });
 
-  test('deve criar um usuário com sucesso e persistir os dados', async ({
+  test('deve criar um usuário com sucesso e persistir os dados @critico', async ({
     request,
   }) => {
     const dados: DadosUsuario = {

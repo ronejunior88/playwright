@@ -24,7 +24,7 @@ test.describe('Consulta de usuários - GET /usuarios', () => {
     }
   });
 
-  test('deve listar usuários com estrutura válida', async ({ request }) => {
+  test('deve listar usuários com estrutura válida @smoke @critico', async ({ request }) => {
     const response = await request.get('/usuarios');
 
     expect(response.status()).toBe(200);

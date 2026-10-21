@@ -51,7 +51,10 @@ npx playwright test -g "login"             # por título
 A classificação de risco, os grupos de regressão e as regras de evolução das
 tags estão em [`docs/regression-strategy.md`](docs/regression-strategy.md);
 os critérios de aprovação (quality gate) estão em
-[`docs/quality-gate.md`](docs/quality-gate.md).
+[`docs/quality-gate.md`](docs/quality-gate.md); e o escopo dos testes de
+segurança (autenticação, autorização, entradas, exposição de dados e
+sanitização de logs) está em
+[`docs/security-testing.md`](docs/security-testing.md).
 
 ## Estrutura
 
@@ -60,6 +63,9 @@ tests/
   fixtures.ts                 # test/expect estendidos (evidência automática de API)
   health.spec.ts              # health check da API
   auth/login.spec.ts          # POST /login
+  seguranca/                  # testes de segurança (entrada e exposição/erros)
+    entrada-validacao.spec.ts
+    exposicao-erros.spec.ts
   produtos/                   # GET/POST/PUT/DELETE /produtos
   usuarios/                   # GET/POST/PUT/DELETE /usuarios
   carrinhos/                  # GET/POST e conclusão/cancelamento de compra
@@ -70,12 +76,14 @@ tests/
     carrinhos.ts
     contrato.ts               # validadores de contrato centralizados
     diagnostico.ts            # sanitização e classificação de status para evidências
+    diagnostico.sanitizer.spec.ts  # testes unitários do sanitizador
     limpeza.ts                # exclusão com proteção contra 429 (1 tentativa extra)
 docs/
   traceability-matrix.md      # matriz requisito x cenário x arquivo (99 requisitos)
   coverage-analysis.md        # cobertura agregada e lacunas por risco
   regression-strategy.md      # classificação de risco e grupos smoke/críticos
   quality-gate.md             # critérios de aprovação da suíte
+  security-testing.md         # escopo, achados e sanitização (ETAPA 11)
 ```
 
 ## Cobertura
@@ -182,6 +190,12 @@ Por padrão **não** são registrados corpos de requisição/resposta nem cabeç
 `Authorization` — apenas método, endpoint, status e duração —, de modo que
 tokens e senhas não aparecem nas evidências. A sanitização atua apenas na
 camada de logging; a resposta original usada pelas asserções não é alterada.
+
+O sanitizador é coberto por testes unitários em
+`tests/helpers/diagnostico.sanitizer.spec.ts` (executáveis sem rede):
+verificam chaves em objetos/aninhados/arrays, tokens Bearer e JWTs em texto,
+mensagens de `Error`, ausência de mutação do objeto original e a sanitização do
+histórico de requisições — sem imprimir os valores sensíveis no terminal.
 
 ## Como analisar um teste que falhou
 

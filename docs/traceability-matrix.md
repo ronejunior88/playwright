@@ -12,9 +12,15 @@ ServeRest ao cenário automatizado que o verifica.
 | Pontos da API inventariados | 16 (16 combinações `método + rota`) |
 | Respostas HTTP documentadas mapeadas | 45 (somando as listas `Responses` dos 16 pontos) |
 | Requisitos rastreados nesta matriz | 99 |
-| Testes da suíte | 144 em 15 arquivos `*.spec.ts` |
-| Última execução completa | 2026-10-20 13:52:51 UTC — `npm test` — **144/144 aprovados**, 0 falhas, 0 ignorados, 0 instáveis, 107,5 s |
-| Evidência | `test-results/results.json` (`stats`: `expected 144`, `unexpected 0`, `skipped 0`, `flaky 0`) |
+| Testes da suíte | 176 em 18 arquivos `*.spec.ts` |
+| Última execução completa | 2026-10-21 — `npm test` — **176/176 aprovados**, 0 falhas, 0 ignorados, 0 instáveis, ~172 s |
+| Evidência | `test-results/results.json` (`stats`: `expected 176`, `unexpected 0`, `skipped 0`, `flaky 0`) |
+
+> A partir da ETAPA 11 a suíte passou a incluir 32 testes adicionais
+> (sanitizador, exposição de dados/erros, validações de entrada e cenários de
+> autenticação/autorização); a matriz de requisitos da API (99) permanece a
+> mesma e os novos cenários estão documentados em
+> `docs/security-testing.md`.
 
 Método: leitura direta da documentação (HTML da versão publicada), inventário de
 endpoints e respostas, comparação com os títulos reais dos testes da suíte e
@@ -230,8 +236,9 @@ descritos na documentação da versão 2.22.1. Todos receberam cenário automati
 | Cobertura implícita declarada | 2 (USER-022, CART-010) |
 | Requisitos de caminho positivo (2xx esperado) | 50 |
 | Requisitos de rejeição/erro (4xx esperado) | 49 |
-| Testes da suíte | 144 (144/144 aprovados em 2026-10-20) |
+| Testes da suíte | 176 (176/176 aprovados em 2026-10-21; 144 na ETAPA 9) |
 | Testes adicionados na ETAPA 9 | 9 (filtro `password`; filtros combinados em usuários e em carrinhos; 3 variações de `Authorization` malformado; 3 rejeições de chave de query não permitida) |
+| Testes adicionados na ETAPA 11 | 32 (ver distribuição em `docs/security-testing.md`) |
 
 > Conferência: 50 + 49 = 99 requisitos; 98 + 1 = 99 (nenhum requisito sem status).
 

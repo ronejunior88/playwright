@@ -173,6 +173,36 @@ test.describe('Conclusão de compra - DELETE /carrinhos/concluir-compra', () => 
     expect(body.message).toBe(MENSAGEM_TOKEN_CARRINHO);
   });
 
+  test('deve rejeitar a conclusão com Authorization malformado (token sem prefixo Bearer)', async ({
+    request,
+  }) => {
+    const conta = await novaConta(request);
+    const produto = await novoProduto(request, { preco: 113, estoque: 5 });
+
+    await criarCarrinhoTeste(request, conta.token, [
+      { idProduto: produto.id, quantidade: 1 },
+    ]);
+    const estoqueAposCriar = await obterEstoque(request, produto.id);
+
+    const response = await request.delete('/carrinhos/concluir-compra', {
+      headers: { Authorization: conta.token },
+    });
+
+    expect(response.status()).toBe(401);
+    expect(response.headers()['content-type'] ?? '').toContain(
+      'application/json',
+    );
+
+    const body = (await response.json()) as ErroCarrinho;
+    expect(body.message).toBe(MENSAGEM_TOKEN_CARRINHO);
+
+    const lista = await listarCarrinhos(request, {
+      idUsuario: conta.usuario.id,
+    });
+    expect(lista.quantidade).toBe(1);
+    expect(await obterEstoque(request, produto.id)).toBe(estoqueAposCriar);
+  });
+
   test('não deve concluir a mesma compra duas vezes', async ({ request }) => {
     const conta = await novaConta(request);
     const produto = await novoProduto(request, { preco: 112, estoque: 10 });

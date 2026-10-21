@@ -15,6 +15,7 @@ import {
 } from '../helpers/produtos';
 import {
   excluirUsuario,
+  gerarIdUnico,
   type UsuarioCriado,
 } from '../helpers/usuarios';
 
@@ -229,6 +230,48 @@ test.describe('Criação de produtos - POST /produtos', () => {
     expect(lista.quantidade).toBe(1);
     expect(lista.produtos).toHaveLength(1);
     expect(lista.produtos[0]._id).toBe(produto.id);
+  });
+
+  test('deve rejeitar campos não documentados no payload de criação', async ({
+    request,
+  }) => {
+    const nome = gerarNomeProdutoUnico('Produto Campos Extras');
+    const tokenForjado = 'token-forjado-nao-deve-ser-usado';
+
+    const response = await request.post('/produtos', {
+      data: {
+        nome,
+        preco: 123,
+        descricao: 'Produto com campos não documentados',
+        quantidade: 7,
+        _id: gerarIdUnico(),
+        authorization: `Bearer ${tokenForjado}`,
+        administrador: 'true',
+      },
+      headers: { Authorization: bearer(tokenAdmin) },
+    });
+
+    // Comportamento observado: a API valida o schema em modo estrito e rejeita
+    // explicitamente os campos não documentados em vez de ignorá-los. A forma
+    // do corpo pode variar (lista por campo ou mensagem genérica), mas o
+    // resultado é sempre 400 e nenhum produto é criado.
+    expect(response.status()).toBe(400);
+    expect(response.headers()['content-type'] ?? '').toContain('application/json');
+
+    const body = (await response.json()) as Record<string, string>;
+    const rejeitouCampo =
+      body._id === '_id não é permitido' ||
+      body.administrador === 'administrador não é permitido' ||
+      typeof body.message === 'string';
+    expect(
+      rejeitouCampo,
+      'campos não documentados devem ser rejeitados',
+    ).toBe(true);
+
+    const consulta = await request.get('/produtos', { params: { nome } });
+    expect(consulta.status()).toBe(200);
+    const lista = (await consulta.json()) as ListaProdutos;
+    expect(lista.quantidade).toBe(0);
   });
 
   for (const caso of CASOS_PAYLOAD_INVALIDO) {

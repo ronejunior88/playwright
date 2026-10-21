@@ -166,6 +166,48 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
     expect(await obterEstoque(request, produto.id)).toBe(estoqueInicial);
   });
 
+  test('deve rejeitar a criação com Authorization malformado (token sem prefixo Bearer)', async ({
+    request,
+  }) => {
+    const conta = await novaConta(request);
+    const produto = await novoProduto(request, { preco: 131, estoque: 5 });
+    const estoqueInicial = await obterEstoque(request, produto.id);
+
+    const response = await request.post('/carrinhos', {
+      data: { produtos: [{ idProduto: produto.id, quantidade: 1 }] },
+      headers: { Authorization: conta.token },
+    });
+
+    expect(response.status()).toBe(401);
+    expect(response.headers()['content-type'] ?? '').toContain(
+      'application/json',
+    );
+
+    const body = (await response.json()) as ErroCarrinho;
+    expect(body.message).toBe(MENSAGEM_TOKEN_CARRINHO);
+
+    const lista = await listarCarrinhos(request, { idUsuario: conta.usuario.id });
+    expect(lista.quantidade).toBe(0);
+    expect(await obterEstoque(request, produto.id)).toBe(estoqueInicial);
+  });
+
+  test('deve permitir a criação de carrinho para administrador (rota não exige admin)', async ({
+    request,
+  }) => {
+    const conta = await criarUsuarioAutenticado(request, 'true');
+    contasCriadas.push(conta);
+    contasDoTeste.push(conta);
+    const produto = await novoProduto(request, { preco: 135, estoque: 5 });
+
+    const carrinhoId = await criarCarrinhoTeste(request, conta.token, [
+      { idProduto: produto.id, quantidade: 1 },
+    ]);
+
+    const carrinho = await obterCarrinho(request, carrinhoId);
+    expect(carrinho.idUsuario).toBe(conta.usuario.id);
+    expect(carrinho.produtos[0].idProduto).toBe(produto.id);
+  });
+
   test('deve rejeitar a criação de um segundo carrinho para o mesmo usuário @critico', async ({
     request,
   }) => {

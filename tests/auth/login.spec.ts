@@ -204,4 +204,58 @@ test.describe('Login da API ServeRest', () => {
     expect(body.password).toBe('password não pode ficar em branco');
     expect(body).not.toHaveProperty('authorization');
   });
+
+  test('deve retornar erro ao enviar email vazio com senha válida', async ({
+    request,
+  }) => {
+    const response = await request.post('/login', {
+      data: {
+        email: '',
+        password: 'senha-qualquer-123',
+      },
+    });
+
+    expect(response.status()).toBe(400);
+
+    const contentType = response.headers()['content-type'] ?? '';
+    expect(contentType).toContain('application/json');
+
+    const body = (await response.json()) as RespostaLogin;
+    expect(body).toHaveProperty('email');
+    expect(body.email).toBe('email não pode ficar em branco');
+    expect(body).not.toHaveProperty('authorization');
+  });
+
+  test('deve rejeitar login com campos de tipo incorreto (não texto)', async ({
+    request,
+  }) => {
+    const response = await request.post('/login', {
+      data: {
+        email: 12345,
+        password: 999999,
+      },
+    });
+
+    expect(response.status()).toBe(400);
+
+    const contentType = response.headers()['content-type'] ?? '';
+    expect(contentType).toContain('application/json');
+
+    const body = (await response.json()) as RespostaLogin & {
+      email?: string;
+      password?: string;
+    };
+    expect(body).not.toHaveProperty('authorization');
+
+    // Comportamento observado: rejeição por campo (`email deve ser uma string`).
+    // A mensagem exata pode variar entre rejeição por campo e genérica; o
+    // invariante verificado é: 400, sem token e com indicação de erro de campo.
+    const indicouCampo =
+      body.email === 'email deve ser uma string' ||
+      typeof body.message === 'string';
+    expect(
+      indicouCampo,
+      'login com tipos incorretos deve ser rejeitado',
+    ).toBe(true);
+  });
 });

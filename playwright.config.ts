@@ -28,7 +28,7 @@ export default defineConfig({
    */
   workers: 1,
   /* Reporters: terminal (list), HTML e JSON; no CI adiciona anotacoes do GitHub. */
-  reporter: reporters,
+  reporter: [['html', { open: 'always' }]], 
   /* Shared settings for all tests. See https://playwright.dev/docs/api/class-testoptions */
   use: {
     baseURL: 'https://serverest.dev',

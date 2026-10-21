@@ -6,6 +6,8 @@
   "scripts": {
     "test": "playwright test",
     "test:api": "playwright test",
+    "test:smoke": "playwright test --grep @smoke",
+    "test:criticos": "playwright test --grep @critico",
     "test:paralelo": "playwright test --workers=2",
     "typecheck": "tsc --noEmit",
     "report": "playwright show-report"

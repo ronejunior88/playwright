@@ -40,7 +40,7 @@ test.describe('Consulta de produtos - GET /produtos', () => {
     await excluirUsuario(request, usuarioAdmin.id);
   });
 
-  test('deve listar produtos com estrutura válida', async ({ request }) => {
+  test('deve listar produtos com estrutura válida @smoke @critico', async ({ request }) => {
     const response = await request.get('/produtos');
 
     expect(response.status()).toBe(200);

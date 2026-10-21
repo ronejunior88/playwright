@@ -93,7 +93,7 @@ test.describe('Integridade e regras de negócio - carrinhos', () => {
     return produto;
   }
 
-  test('deve executar o fluxo completo de compra concluída', async ({
+  test('deve executar o fluxo completo de compra concluída @critico', async ({
     request,
   }) => {
     const conta = await novaConta(request);

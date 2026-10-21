@@ -51,7 +51,7 @@ test.describe('Criação de produtos - POST /produtos', () => {
     await excluirUsuario(request, usuarioComum.id);
   });
 
-  test('deve criar um produto com sucesso e persistir os dados', async ({
+  test('deve criar um produto com sucesso e persistir os dados @critico', async ({
     request,
   }) => {
     const produto = await criarProdutoTeste(request, tokenAdmin);
@@ -74,7 +74,7 @@ test.describe('Criação de produtos - POST /produtos', () => {
     expect(corpo.quantidade).toBe(produto.quantidade);
   });
 
-  test('deve rejeitar a criação sem token de autorização', async ({
+  test('deve rejeitar a criação sem token de autorização @critico', async ({
     request,
   }) => {
     const payload = {
@@ -169,7 +169,7 @@ test.describe('Criação de produtos - POST /produtos', () => {
     });
   }
 
-  test('deve rejeitar a criação com usuário comum (não administrador)', async ({
+  test('deve rejeitar a criação com usuário comum (não administrador) @critico', async ({
     request,
   }) => {
     const payload = {

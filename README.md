@@ -22,6 +22,8 @@ Não é necessário baixar navegadores: a suíte é **somente de API** (usa o
 ```bash
 npm test              # executa toda a suíte
 npm run test:api      # alias para toda a suíte (100% API)
+npm run test:smoke    # apenas os 5 testes de smoke (@smoke)
+npm run test:criticos # apenas os 25 testes de risco alto (@critico)
 npm run typecheck     # checagem de tipos (tsc --noEmit)
 npm run report        # abre o relatório HTML da última execução
 ```
@@ -38,11 +40,18 @@ npx playwright test -g "login"             # por título
 
 | Script               | Descrição                                                    |
 | -------------------- | ------------------------------------------------------------ |
-| `npm test`           | Executa todos os testes (1 worker).                          |
+| `npm test`           | Regressão completa: 144 testes (1 worker).                   |
 | `npm run test:api`   | Alias de `npm test` (a suíte inteira é API).                 |
+| `npm run test:smoke` | Smoke: 5 testes (`--grep @smoke`), ~6 s.                     |
+| `npm run test:criticos` | Risco alto: 25 testes (`--grep @critico`), ~37 s.         |
 | `npm run test:paralelo` | Executa com 2 workers (mais rápido, pode receber **429**). |
 | `npm run typecheck`  | Verifica os tipos com TypeScript.                            |
 | `npm run report`     | Abre o relatório HTML.                                       |
+
+A classificação de risco, os grupos de regressão e as regras de evolução das
+tags estão em [`docs/regression-strategy.md`](docs/regression-strategy.md);
+os critérios de aprovação (quality gate) estão em
+[`docs/quality-gate.md`](docs/quality-gate.md).
 
 ## Estrutura
 
@@ -65,6 +74,8 @@ tests/
 docs/
   traceability-matrix.md      # matriz requisito x cenário x arquivo (99 requisitos)
   coverage-analysis.md        # cobertura agregada e lacunas por risco
+  regression-strategy.md      # classificação de risco e grupos smoke/críticos
+  quality-gate.md             # critérios de aprovação da suíte
 ```
 
 ## Cobertura

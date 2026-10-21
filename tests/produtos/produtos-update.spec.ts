@@ -55,7 +55,7 @@ test.describe('Atualização de produtos - PUT /produtos/{_id}', () => {
     await excluirUsuario(request, usuarioComum.id);
   });
 
-  test('deve atualizar um produto existente e persistir as alterações', async ({
+  test('deve atualizar um produto existente e persistir as alterações @critico', async ({
     request,
   }) => {
     const produto = await criarProdutoTeste(request, tokenAdmin);
@@ -179,7 +179,7 @@ test.describe('Atualização de produtos - PUT /produtos/{_id}', () => {
     expect(corpo.preco).toBe(produto.preco);
   });
 
-  test('deve rejeitar a atualização com usuário comum (não administrador)', async ({
+  test('deve rejeitar a atualização com usuário comum (não administrador) @critico', async ({
     request,
   }) => {
     const produto = await criarProdutoTeste(request, tokenAdmin);

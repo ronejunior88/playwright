@@ -95,7 +95,7 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
     return produto;
   }
 
-  test('deve criar um carrinho e reduzir o estoque exatamente pela quantidade', async ({
+  test('deve criar um carrinho e reduzir o estoque exatamente pela quantidade @critico', async ({
     request,
   }) => {
     const conta = await novaConta(request);
@@ -166,7 +166,7 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
     expect(await obterEstoque(request, produto.id)).toBe(estoqueInicial);
   });
 
-  test('deve rejeitar a criação de um segundo carrinho para o mesmo usuário', async ({
+  test('deve rejeitar a criação de um segundo carrinho para o mesmo usuário @critico', async ({
     request,
   }) => {
     const conta = await novaConta(request);
@@ -254,7 +254,7 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
     expect(lista.quantidade).toBe(0);
   });
 
-  test('deve rejeitar quantidade superior ao estoque disponível', async ({
+  test('deve rejeitar quantidade superior ao estoque disponível @critico', async ({
     request,
   }) => {
     const conta = await novaConta(request);

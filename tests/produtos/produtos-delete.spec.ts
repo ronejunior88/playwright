@@ -55,7 +55,7 @@ test.describe('Exclusão de produtos - DELETE /produtos/{_id}', () => {
     await excluirUsuario(request, usuarioComum.id);
   });
 
-  test('deve excluir um produto existente e remover o registro', async ({
+  test('deve excluir um produto existente e remover o registro @critico', async ({
     request,
   }) => {
     const produto = await criarProdutoTeste(request, tokenAdmin);
@@ -139,7 +139,7 @@ test.describe('Exclusão de produtos - DELETE /produtos/{_id}', () => {
     expect(corpo.nome).toBe(produto.nome);
   });
 
-  test('deve rejeitar a exclusão com usuário comum (não administrador)', async ({
+  test('deve rejeitar a exclusão com usuário comum (não administrador) @critico', async ({
     request,
   }) => {
     const produto = await criarProdutoTeste(request, tokenAdmin);
@@ -162,7 +162,7 @@ test.describe('Exclusão de produtos - DELETE /produtos/{_id}', () => {
     expect(corpo.nome).toBe(produto.nome);
   });
 
-  test('deve rejeitar a exclusão de produto vinculado a carrinho', async ({
+  test('deve rejeitar a exclusão de produto vinculado a carrinho @critico', async ({
     request,
   }) => {
     const usuario = await criarUsuarioProdutoTeste(request, 'false');

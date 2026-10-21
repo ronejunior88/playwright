@@ -28,7 +28,7 @@ test.describe('Login da API ServeRest', () => {
     await excluirUsuario(request, usuarioTeste.id);
   });
 
-  test('deve realizar login com sucesso e retornar um token Bearer', async ({
+  test('deve realizar login com sucesso e retornar um token Bearer @smoke @critico', async ({
     request,
   }) => {
     const response = await request.post('/login', {
@@ -60,7 +60,7 @@ test.describe('Login da API ServeRest', () => {
     expect(token.split('.').length).toBe(3);
   });
 
-  test('deve rejeitar login com senha incorreta', async ({ request }) => {
+  test('deve rejeitar login com senha incorreta @smoke @critico', async ({ request }) => {
     const response = await request.post('/login', {
       data: {
         email: usuarioTeste.email,
@@ -81,7 +81,7 @@ test.describe('Login da API ServeRest', () => {
     expect(body).not.toHaveProperty('authorization');
   });
 
-  test('deve rejeitar login com email inexistente', async ({ request }) => {
+  test('deve rejeitar login com email inexistente @critico', async ({ request }) => {
     const response = await request.post('/login', {
       data: {
         email: gerarEmailUnico('login-inexistente'),

@@ -1,11 +1,8 @@
-import { type APIRequestContext } from '@playwright/test';
 import { expect, test } from '../fixtures';
-import { validarContrato } from '../helpers/contratos';
+import { bearer } from '../helpers/autenticacao';
 import {
   cancelarCompra,
-  cancelarCompraSeguro,
   criarCarrinhoTeste,
-  criarUsuarioAutenticado,
   listarCarrinhos,
   MENSAGEM_CANCELAMENTO_SUCESSO,
   MENSAGEM_CARRINHO_NAO_ENCONTRADO,
@@ -13,23 +10,13 @@ import {
   MENSAGEM_USUARIO_SEM_CARRINHO,
   obterEstoque,
   type ErroCarrinho,
-  type MensagemCarrinho,
 } from '../helpers/carrinhos';
 import {
-  bearer,
-  criarProdutoTeste,
-  excluirProduto,
-  type ProdutoCriado,
-} from '../helpers/produtos';
-import {
-  excluirUsuario,
-  type UsuarioCriado,
-} from '../helpers/usuarios';
-
-interface ContaAutenticada {
-  usuario: UsuarioCriado;
-  token: string;
-}
+  type ContextoCarrinhos,
+  criarContextoCarrinhos,
+} from '../helpers/cenario-carrinhos';
+import { validarContrato } from '../helpers/contratos';
+import { lerJson, type MensagemResposta } from '../helpers/resposta';
 
 test.describe('Cancelamento de compra - DELETE /carrinhos/cancelar-compra', () => {
   // Serial: a API permite apenas 1 carrinho ativo por usuário e o afterEach
@@ -37,67 +24,29 @@ test.describe('Cancelamento de compra - DELETE /carrinhos/cancelar-compra', () =
   // cancelaria o carrinho de outro. A serialização é o que garante o isolamento.
   test.describe.configure({ mode: 'serial' });
 
-  let admin: UsuarioCriado;
-  let tokenAdmin: string;
-  const contasCriadas: ContaAutenticada[] = [];
-  let contasDoTeste: ContaAutenticada[] = [];
-  const produtosCriados: ProdutoCriado[] = [];
+  let contexto: ContextoCarrinhos;
 
   test.beforeAll(async ({ request }) => {
-    const conta = await criarUsuarioAutenticado(request, 'true');
-    admin = conta.usuario;
-    tokenAdmin = conta.token;
+    contexto = await criarContextoCarrinhos(request);
   });
 
   test.beforeEach(() => {
-    contasDoTeste = [];
+    contexto.iniciarTeste();
   });
 
   test.afterEach(async ({ request }) => {
-    for (const conta of contasDoTeste) {
-      await cancelarCompraSeguro(request, conta.token);
-    }
+    await contexto.cancelarContasDoTeste(request);
   });
 
   test.afterAll(async ({ request }) => {
-    for (const conta of contasCriadas) {
-      await cancelarCompraSeguro(request, conta.token);
-    }
-    for (const produto of produtosCriados) {
-      await excluirProduto(request, tokenAdmin, produto.id);
-    }
-    for (const conta of contasCriadas) {
-      await excluirUsuario(request, conta.usuario.id);
-    }
-    await excluirUsuario(request, admin.id);
+    await contexto.limpar(request);
   });
-
-  async function novaConta(
-    request: APIRequestContext,
-  ): Promise<ContaAutenticada> {
-    const conta = await criarUsuarioAutenticado(request, 'false');
-    contasCriadas.push(conta);
-    contasDoTeste.push(conta);
-    return conta;
-  }
-
-  async function novoProduto(
-    request: APIRequestContext,
-    opcoes: { preco: number; estoque: number },
-  ): Promise<ProdutoCriado> {
-    const produto = await criarProdutoTeste(request, tokenAdmin, {
-      preco: opcoes.preco,
-      quantidade: opcoes.estoque,
-    });
-    produtosCriados.push(produto);
-    return produto;
-  }
 
   test('deve cancelar a compra, remover o carrinho e repor o estoque @critico', async ({
     request,
   }) => {
-    const conta = await novaConta(request);
-    const produto = await novoProduto(request, { preco: 111, estoque: 10 });
+    const conta = await contexto.novaConta(request);
+    const produto = await contexto.novoProduto(request, { preco: 111, quantidade: 10 });
     const estoqueInicial = await obterEstoque(request, produto.id);
 
     const carrinhoId = await criarCarrinhoTeste(request, conta.token, [
@@ -108,19 +57,13 @@ test.describe('Cancelamento de compra - DELETE /carrinhos/cancelar-compra', () =
 
     const response = await cancelarCompra(request, conta.token);
 
-    expect(response.status()).toBe(200);
-    expect(response.headers()['content-type'] ?? '').toContain(
-      'application/json',
-    );
-
-    const body = (await response.json()) as MensagemCarrinho;
+    const body = await lerJson<MensagemResposta>(response, 200);
     expect(body.message).toBe(MENSAGEM_CANCELAMENTO_SUCESSO);
 
     await validarContrato('carrinhos.cancelamento', response);
 
     const consulta = await request.get(`/carrinhos/${carrinhoId}`);
-    expect(consulta.status()).toBe(400);
-    const corpoConsulta = (await consulta.json()) as ErroCarrinho;
+    const corpoConsulta = await lerJson<ErroCarrinho>(consulta, 400);
     expect(corpoConsulta.message).toBe(MENSAGEM_CARRINHO_NAO_ENCONTRADO);
 
     const lista = await listarCarrinhos(request, {
@@ -135,16 +78,11 @@ test.describe('Cancelamento de compra - DELETE /carrinhos/cancelar-compra', () =
   test('deve retornar mensagem quando não existe carrinho para o usuário', async ({
     request,
   }) => {
-    const conta = await novaConta(request);
+    const conta = await contexto.novaConta(request);
 
     const response = await cancelarCompra(request, conta.token);
 
-    expect(response.status()).toBe(200);
-    expect(response.headers()['content-type'] ?? '').toContain(
-      'application/json',
-    );
-
-    const body = (await response.json()) as MensagemCarrinho;
+    const body = await lerJson<MensagemResposta>(response, 200);
     expect(body.message).toBe(MENSAGEM_USUARIO_SEM_CARRINHO);
 
     await validarContrato('carrinhos.cancelamento', response);
@@ -155,12 +93,7 @@ test.describe('Cancelamento de compra - DELETE /carrinhos/cancelar-compra', () =
   }) => {
     const response = await request.delete('/carrinhos/cancelar-compra');
 
-    expect(response.status()).toBe(401);
-    expect(response.headers()['content-type'] ?? '').toContain(
-      'application/json',
-    );
-
-    const body = (await response.json()) as ErroCarrinho;
+    const body = await lerJson<ErroCarrinho>(response, 401);
     expect(body.message).toBe(MENSAGEM_TOKEN_CARRINHO);
 
     await validarContrato('auth.sem-token', response);
@@ -173,12 +106,7 @@ test.describe('Cancelamento de compra - DELETE /carrinhos/cancelar-compra', () =
       headers: { Authorization: bearer('token-invalido') },
     });
 
-    expect(response.status()).toBe(401);
-    expect(response.headers()['content-type'] ?? '').toContain(
-      'application/json',
-    );
-
-    const body = (await response.json()) as ErroCarrinho;
+    const body = await lerJson<ErroCarrinho>(response, 401);
     expect(body.message).toBe(MENSAGEM_TOKEN_CARRINHO);
 
     await validarContrato('auth.sem-token', response);
@@ -187,8 +115,8 @@ test.describe('Cancelamento de compra - DELETE /carrinhos/cancelar-compra', () =
   test('não deve repor o estoque duas vezes ao cancelar novamente @critico', async ({
     request,
   }) => {
-    const conta = await novaConta(request);
-    const produto = await novoProduto(request, { preco: 112, estoque: 10 });
+    const conta = await contexto.novaConta(request);
+    const produto = await contexto.novoProduto(request, { preco: 112, quantidade: 10 });
     const estoqueInicial = await obterEstoque(request, produto.id);
 
     await criarCarrinhoTeste(request, conta.token, [
@@ -198,18 +126,14 @@ test.describe('Cancelamento de compra - DELETE /carrinhos/cancelar-compra', () =
     expect(estoqueAposCriar).toBe(estoqueInicial - 4);
 
     const primeiro = await cancelarCompra(request, conta.token);
-    expect(primeiro.status()).toBe(200);
-    expect(((await primeiro.json()) as MensagemCarrinho).message).toBe(
-      MENSAGEM_CANCELAMENTO_SUCESSO,
-    );
+    const corpoPrimeiro = await lerJson<MensagemResposta>(primeiro, 200);
+    expect(corpoPrimeiro.message).toBe(MENSAGEM_CANCELAMENTO_SUCESSO);
     await validarContrato('carrinhos.cancelamento', primeiro);
     expect(await obterEstoque(request, produto.id)).toBe(estoqueInicial);
 
     const segundo = await cancelarCompra(request, conta.token);
-    expect(segundo.status()).toBe(200);
-    expect(((await segundo.json()) as MensagemCarrinho).message).toBe(
-      MENSAGEM_USUARIO_SEM_CARRINHO,
-    );
+    const corpoSegundo = await lerJson<MensagemResposta>(segundo, 200);
+    expect(corpoSegundo.message).toBe(MENSAGEM_USUARIO_SEM_CARRINHO);
     await validarContrato('carrinhos.cancelamento', segundo);
 
     expect(await obterEstoque(request, produto.id)).toBe(estoqueInicial);

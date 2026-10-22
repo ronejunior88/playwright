@@ -1,12 +1,20 @@
-import { expect, type APIRequestContext, type APIResponse } from '@playwright/test';
-import { fazerLogin } from './autenticacao';
+import {
+  expect,
+  type APIRequestContext,
+  type APIResponse,
+} from '@playwright/test';
+import { bearer, fazerLogin, MENSAGEM_TOKEN_INVALIDO } from './autenticacao';
 import { executarLimpeza } from './limpeza';
 import {
-  bearer,
   criarUsuarioProdutoTeste,
-  MENSAGEM_TOKEN_INVALIDO,
+  MENSAGEM_PRODUTO_NAO_ENCONTRADO,
   type ProdutoApi,
 } from './produtos';
+import {
+  lerJson,
+  MENSAGEM_CADASTRO_SUCESSO,
+  type MensagemResposta,
+} from './resposta';
 import { type UsuarioCriado } from './usuarios';
 
 export interface ItemCarrinho {
@@ -29,11 +37,6 @@ export interface CarrinhoApi {
 export interface ListaCarrinhos {
   quantidade: number;
   carrinhos: CarrinhoApi[];
-}
-
-export interface MensagemCarrinho {
-  message?: string;
-  _id?: string;
 }
 
 export interface ItemErroCarrinho {
@@ -65,15 +68,11 @@ export interface UsuarioAutenticado {
 
 export const MENSAGEM_TOKEN_CARRINHO = MENSAGEM_TOKEN_INVALIDO;
 export const MENSAGEM_CARRINHO_NAO_ENCONTRADO = 'Carrinho não encontrado';
-export const MENSAGEM_ID_INVALIDO_CARRINHO =
-  'id deve ter exatamente 16 caracteres alfanuméricos';
 export const MENSAGEM_SEGUNDO_CARRINHO = 'Não é permitido ter mais de 1 carrinho';
 export const MENSAGEM_PRODUTO_DUPLICADO =
   'Não é permitido possuir produto duplicado';
-export const MENSAGEM_PRODUTO_INEXISTENTE = 'Produto não encontrado';
 export const MENSAGEM_ESTOQUE_INSUFICIENTE =
   'Produto não possui quantidade suficiente';
-export const MENSAGEM_CONCLUSAO_SUCESSO = 'Registro excluído com sucesso';
 export const MENSAGEM_CANCELAMENTO_SUCESSO =
   'Registro excluído com sucesso. Estoque dos produtos reabastecido';
 export const MENSAGEM_USUARIO_SEM_CARRINHO =
@@ -112,7 +111,7 @@ export const CASOS_PAYLOAD_CARRINHO_INVALIDO: CasoPayloadCarrinhoInvalido[] = [
   {
     rotulo: 'idProduto com formato inválido',
     montar: () => ({ produtos: [{ idProduto: 'curto', quantidade: 1 }] }),
-    corpoEsperado: { message: MENSAGEM_PRODUTO_INEXISTENTE },
+    corpoEsperado: { message: MENSAGEM_PRODUTO_NAO_ENCONTRADO },
   },
   {
     rotulo: 'quantidade igual a zero',
@@ -167,11 +166,8 @@ export async function criarCarrinhoTeste(
     headers: { Authorization: bearer(token) },
   });
 
-  expect(response.status()).toBe(201);
-  expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-  const body = (await response.json()) as MensagemCarrinho;
-  expect(body.message).toBe('Cadastro realizado com sucesso');
+  const body = await lerJson<MensagemResposta>(response, 201, 'criação de carrinho');
+  expect(body.message).toBe(MENSAGEM_CADASTRO_SUCESSO);
   expect(body._id, 'criação de carrinho deve retornar um _id').toBeTruthy();
 
   return body._id!;
@@ -182,9 +178,7 @@ export async function obterProduto(
   idProduto: string,
 ): Promise<ProdutoApi> {
   const response = await request.get(`/produtos/${idProduto}`);
-  expect(response.status()).toBe(200);
-  expect(response.headers()['content-type'] ?? '').toContain('application/json');
-  return (await response.json()) as ProdutoApi;
+  return lerJson<ProdutoApi>(response, 200, 'consulta de produto');
 }
 
 export async function obterEstoque(
@@ -200,9 +194,7 @@ export async function obterCarrinho(
   idCarrinho: string,
 ): Promise<CarrinhoApi> {
   const response = await request.get(`/carrinhos/${idCarrinho}`);
-  expect(response.status()).toBe(200);
-  expect(response.headers()['content-type'] ?? '').toContain('application/json');
-  return (await response.json()) as CarrinhoApi;
+  return lerJson<CarrinhoApi>(response, 200, 'consulta de carrinho');
 }
 
 export async function listarCarrinhos(
@@ -210,9 +202,7 @@ export async function listarCarrinhos(
   params: Record<string, string> = {},
 ): Promise<ListaCarrinhos> {
   const response = await request.get('/carrinhos', { params });
-  expect(response.status()).toBe(200);
-  expect(response.headers()['content-type'] ?? '').toContain('application/json');
-  return (await response.json()) as ListaCarrinhos;
+  return lerJson<ListaCarrinhos>(response, 200, 'listagem de carrinhos');
 }
 
 export async function concluirCompra(

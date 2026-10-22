@@ -1,20 +1,25 @@
 import { expect, test } from '../fixtures';
+import { fazerLogin } from '../helpers/autenticacao';
 import {
   validarErroDeCampos,
   validarListaProdutos,
   validarProduto,
 } from '../helpers/contrato';
 import { validarContrato } from '../helpers/contratos';
-import { fazerLogin } from '../helpers/autenticacao';
 import {
   criarProdutoTeste,
   criarUsuarioProdutoTeste,
   excluirProduto,
-  type ErroValidacaoProduto,
+  MENSAGEM_PRODUTO_NAO_ENCONTRADO,
   type ListaProdutos,
-  type MensagemResposta,
   type ProdutoApi,
 } from '../helpers/produtos';
+import {
+  lerJson,
+  MENSAGEM_ID_INVALIDO,
+  type ErroValidacao,
+  type MensagemResposta,
+} from '../helpers/resposta';
 import {
   excluirUsuario,
   gerarIdUnico,
@@ -44,10 +49,7 @@ test.describe('Consulta de produtos - GET /produtos', () => {
   test('deve listar produtos com estrutura válida @smoke @critico', async ({ request }) => {
     const response = await request.get('/produtos');
 
-    expect(response.status()).toBe(200);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as ListaProdutos;
+    const body = await lerJson<ListaProdutos>(response, 200);
 
     expect(body).toHaveProperty('quantidade');
     expect(typeof body.quantidade).toBe('number');
@@ -71,10 +73,7 @@ test.describe('Consulta de produtos - GET /produtos', () => {
       params: { _id: produto.id },
     });
 
-    expect(response.status()).toBe(200);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as ListaProdutos;
+    const body = await lerJson<ListaProdutos>(response, 200);
     expect(body.quantidade).toBe(1);
     expect(body.produtos).toHaveLength(1);
     expect(body.produtos[0]._id).toBe(produto.id);
@@ -88,10 +87,7 @@ test.describe('Consulta de produtos - GET /produtos', () => {
       params: { nome: produto.nome },
     });
 
-    expect(response.status()).toBe(200);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as ListaProdutos;
+    const body = await lerJson<ListaProdutos>(response, 200);
     expect(body.quantidade).toBeGreaterThanOrEqual(1);
 
     for (const produtoEncontrado of body.produtos) {
@@ -112,10 +108,7 @@ test.describe('Consulta de produtos - GET /produtos', () => {
       params: { descricao: produto.descricao },
     });
 
-    expect(response.status()).toBe(200);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as ListaProdutos;
+    const body = await lerJson<ListaProdutos>(response, 200);
     expect(body.quantidade).toBeGreaterThanOrEqual(1);
 
     const produtosCriados = body.produtos.filter(
@@ -135,10 +128,7 @@ test.describe('Consulta de produtos - GET /produtos', () => {
       },
     });
 
-    expect(response.status()).toBe(200);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as ListaProdutos;
+    const body = await lerJson<ListaProdutos>(response, 200);
     expect(body.quantidade).toBeGreaterThanOrEqual(1);
 
     for (const produtoEncontrado of body.produtos) {
@@ -159,10 +149,7 @@ test.describe('Consulta de produtos - GET /produtos', () => {
       params: { nome: 'Produto Nome Inexistente XYZ 999' },
     });
 
-    expect(response.status()).toBe(200);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as ListaProdutos;
+    const body = await lerJson<ListaProdutos>(response, 200);
     expect(body.quantidade).toBe(0);
     expect(body.produtos).toHaveLength(0);
   });
@@ -173,10 +160,7 @@ test.describe('Consulta de produtos - GET /produtos', () => {
 
     const response = await request.get(`/produtos/${produto.id}`);
 
-    expect(response.status()).toBe(200);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as ProdutoApi;
+    const body = await lerJson<ProdutoApi>(response, 200);
     validarProduto(body);
     expect(body._id).toBe(produto.id);
     expect(body.nome).toBe(produto.nome);
@@ -194,10 +178,7 @@ test.describe('Consulta de produtos - GET /produtos', () => {
       params: { chave_nao_documentada: '1' },
     });
 
-    expect(response.status()).toBe(400);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as Record<string, string>;
+    const body = await lerJson<Record<string, string>>(response, 400);
     validarErroDeCampos(body);
     expect(body.chave_nao_documentada).toBe(
       'chave_nao_documentada não é permitido',
@@ -215,11 +196,8 @@ test.describe('Consulta de produtos - GET /produtos', () => {
 
     const response = await request.get(`/produtos/${id}`);
 
-    expect(response.status()).toBe(400);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as MensagemResposta;
-    expect(body.message).toBe('Produto não encontrado');
+    const body = await lerJson<MensagemResposta>(response, 400);
+    expect(body.message).toBe(MENSAGEM_PRODUTO_NAO_ENCONTRADO);
     expect(body).not.toHaveProperty('nome');
 
     await validarContrato('erros.mensagem', response);
@@ -230,11 +208,8 @@ test.describe('Consulta de produtos - GET /produtos', () => {
   }) => {
     const response = await request.get('/produtos/id-invalido');
 
-    expect(response.status()).toBe(400);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as ErroValidacaoProduto;
-    expect(body.id).toBe('id deve ter exatamente 16 caracteres alfanuméricos');
+    const body = await lerJson<ErroValidacao>(response, 400);
+    expect(body.id).toBe(MENSAGEM_ID_INVALIDO);
 
     await validarContrato('erros.id-invalido', response);
   });

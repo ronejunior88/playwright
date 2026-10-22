@@ -1,21 +1,23 @@
 import { expect, test } from '../fixtures';
+import { bearer, fazerLogin } from '../helpers/autenticacao';
 import { validarContrato } from '../helpers/contratos';
-import { fazerLogin } from '../helpers/autenticacao';
 import {
-  bearer,
   criarUsuarioProdutoTeste,
   excluirProduto,
   gerarNomeProdutoUnico,
-  type MensagemResposta,
   type ProdutoApi,
 } from '../helpers/produtos';
+import {
+  lerJson,
+  type ErroValidacao,
+  type MensagemResposta,
+} from '../helpers/resposta';
 import {
   excluirUsuario,
   gerarEmailUnico,
   gerarIdUnico,
   gerarNomeUnico,
   type DadosUsuario,
-  type ErroValidacao,
   type UsuarioCriado,
 } from '../helpers/usuarios';
 
@@ -68,14 +70,15 @@ test.describe('Validação de segurança de entradas - produtos', () => {
         headers: { Authorization: bearer(tokenAdmin) },
       });
 
-      expect(response.status(), `${caso.rotulo}: criação`).toBe(201);
-      const criado = (await response.json()) as MensagemResposta;
+      const criado = await lerJson<MensagemResposta>(
+        response,
+        201,
+        `${caso.rotulo}: criação`,
+      );
       idsProdutos.push(criado._id!);
 
       const consulta = await request.get(`/produtos/${criado._id}`);
-      expect(consulta.status()).toBe(200);
-
-      const corpo = (await consulta.json()) as ProdutoApi;
+      const corpo = await lerJson<ProdutoApi>(consulta, 200);
       // O texto deve voltar idêntico ao enviado: nem escapado nem executado.
       expect(corpo.descricao).toBe(caso.valor);
     }
@@ -126,8 +129,7 @@ test.describe('Validação de segurança de entradas - produtos', () => {
     // Comportamento observado: a API rejeita campos extras (schema estrito) em
     // vez de os ignorar. A forma do corpo varia entre a lista por campo e uma
     // mensagem genérica; ambas resultam em 400 e nenhum registro criado.
-    expect(response.status()).toBe(400);
-    const corpo = (await response.json()) as Record<string, string>;
+    const corpo = await lerJson<Record<string, string>>(response, 400);
     const rejeitouCampo =
       corpo._id === '_id não é permitido' ||
       typeof corpo.message === 'string';
@@ -139,7 +141,7 @@ test.describe('Validação de segurança de entradas - produtos', () => {
     await validarContrato('erros.validacao-campos', response);
 
     const consulta = await request.get('/produtos', { params: { nome } });
-    const lista = (await consulta.json()) as { quantidade: number };
+    const lista = await lerJson<{ quantidade: number }>(consulta, 200);
     expect(lista.quantidade).toBe(0);
   });
 
@@ -151,8 +153,7 @@ test.describe('Validação de segurança de entradas - produtos', () => {
       headers: { Authorization: bearer(tokenAdmin) },
     });
 
-    expect(response.status()).toBe(400);
-    const corpo = (await response.json()) as Record<string, unknown>;
+    const corpo = await lerJson<Record<string, unknown>>(response, 400);
     expect(corpo).not.toHaveProperty('_id');
     expect(corpo.nome).toBe('nome é obrigatório');
     expect(corpo.quantidade).toBe('quantidade é obrigatório');
@@ -193,9 +194,7 @@ test.describe('Validação de segurança de entradas - usuários', () => {
     // é permitido`) e uma mensagem genérica de payload não permitido — ambos
     // são rejeições, nunca um cadastro bem-sucedido. Nenhum dos dois deve
     // devolver um `_id` de recurso criado.
-    expect(response.status()).toBe(400);
-
-    const corpo = (await response.json()) as Record<string, string>;
+    const corpo = await lerJson<Record<string, string>>(response, 400);
     const ehErroDeCampo = corpo._id === '_id não é permitido';
     const ehErroGenerico = typeof corpo.message === 'string';
     expect(
@@ -208,8 +207,7 @@ test.describe('Validação de segurança de entradas - usuários', () => {
     const consulta = await request.get('/usuarios', {
       params: { email: dados.email },
     });
-    expect(consulta.status()).toBe(200);
-    const lista = (await consulta.json()) as { quantidade: number };
+    const lista = await lerJson<{ quantidade: number }>(consulta, 200);
     expect(lista.quantidade).toBe(0);
   });
 
@@ -225,9 +223,11 @@ test.describe('Validação de segurança de entradas - usuários', () => {
       };
 
       const response = await request.post('/usuarios', { data: dados });
-      expect(response.status(), `email "${emailInvalido}"`).toBe(400);
-
-      const corpo = (await response.json()) as ErroValidacao;
+      const corpo = await lerJson<ErroValidacao>(
+        response,
+        400,
+        `email "${emailInvalido}"`,
+      );
       expect(corpo.email).toBe('email deve ser um email válido');
 
       await validarContrato('erros.validacao-campos', response);

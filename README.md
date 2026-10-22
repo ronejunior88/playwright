@@ -42,7 +42,7 @@ npx playwright test -g "login"             # por título
 
 | Script               | Descrição                                                    |
 | -------------------- | ------------------------------------------------------------ |
-| `npm test`           | Regressão completa: 265 testes (1 worker).                   |
+| `npm test`           | Regressão completa: 272 testes (1 worker).                   |
 | `npm run test:api`   | Alias de `npm test` (a suíte inteira é API).                 |
 | `npm run test:smoke` | Smoke: 5 testes (`--grep @smoke`), ~6 s.                     |
 | `npm run test:criticos` | Risco alto: 25 testes (`--grep @critico`), ~37 s.         |
@@ -61,9 +61,11 @@ segurança (autenticação, autorização, entradas, exposição de dados e
 sanitização de logs) está em
 [`docs/security-testing.md`](docs/security-testing.md); a avaliação de
 latência da API está em
-[`docs/performance-testing.md`](docs/performance-testing.md); e o catálogo de
+[`docs/performance-testing.md`](docs/performance-testing.md); o catálogo de
 contratos da API está em
-[`docs/api-contracts.md`](docs/api-contracts.md).
+[`docs/api-contracts.md`](docs/api-contracts.md); e o diagnóstico de
+duplicação/tipagem da suíte, com as decisões de escopo, está em
+[`docs/code-quality.md`](docs/code-quality.md).
 
 ## Estrutura
 
@@ -89,16 +91,20 @@ tests/
   performance/                # avaliação isolada de latência (fora da regressão)
     api-latency.spec.ts
   helpers/                    # utilitários reutilizados pelos testes
-    autenticacao.ts
+    autenticacao.ts           # login, bearer() e mensagens de autenticação
+    aleatorio.ts              # geração de sufixo aleatório (dados únicos)
+    resposta.ts               # formato de corpo da API e lerJson()
     usuarios.ts
     produtos.ts
     carrinhos.ts
+    cenario-carrinhos.ts      # ciclo de vida compartilhado pelos specs de carrinho
     contrato.ts               # validadores de contrato centralizados
     contratos.ts              # adaptador Playwright do motor de contratos
     diagnostico.ts            # sanitização e classificação de status para evidências
     diagnostico.sanitizer.spec.ts  # testes unitários do sanitizador
     latencia.ts                # medição, classificação de falhas e estatística
     latencia.spec.ts          # testes unitários do cálculo estatístico (sem rede)
+    resposta.spec.ts          # testes unitários da leitura de resposta (sem rede)
     limpeza.ts                # exclusão com proteção contra 429 (1 tentativa extra)
 docs/
   traceability-matrix.md      # matriz requisito x cenário x arquivo (99 requisitos)
@@ -108,6 +114,7 @@ docs/
   security-testing.md         # escopo, achados e sanitização (ETAPA 11)
   performance-testing.md      # avaliação de latência da API (ETAPA 12)
   api-contracts.md            # catálogo de contratos e divergências (ETAPA 13)
+  code-quality.md             # duplicação, tipagem e decisões de escopo (ETAPA 14)
 playwright.latencia.config.ts # config isolado da suíte de desempenho
 ```
 

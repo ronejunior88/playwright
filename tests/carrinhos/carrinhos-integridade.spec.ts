@@ -1,36 +1,26 @@
-import { type APIRequestContext } from '@playwright/test';
 import { expect, test } from '../fixtures';
-import { validarContrato } from '../helpers/contratos';
 import {
   cancelarCompra,
-  cancelarCompraSeguro,
   concluirCompra,
   criarCarrinhoTeste,
-  criarUsuarioAutenticado,
   listarCarrinhos,
   MENSAGEM_CANCELAMENTO_SUCESSO,
   MENSAGEM_CARRINHO_NAO_ENCONTRADO,
-  MENSAGEM_CONCLUSAO_SUCESSO,
   MENSAGEM_USUARIO_SEM_CARRINHO,
   obterCarrinho,
   obterEstoque,
   type ErroCarrinho,
-  type MensagemCarrinho,
 } from '../helpers/carrinhos';
 import {
-  criarProdutoTeste,
-  excluirProduto,
-  type ProdutoCriado,
-} from '../helpers/produtos';
+  type ContextoCarrinhos,
+  criarContextoCarrinhos,
+} from '../helpers/cenario-carrinhos';
+import { validarContrato } from '../helpers/contratos';
 import {
-  excluirUsuario,
-  type UsuarioCriado,
-} from '../helpers/usuarios';
-
-interface ContaAutenticada {
-  usuario: UsuarioCriado;
-  token: string;
-}
+  lerJson,
+  MENSAGEM_EXCLUIDO_SUCESSO,
+  type MensagemResposta,
+} from '../helpers/resposta';
 
 test.describe('Integridade e regras de negócio - carrinhos', () => {
   // Serial: a API permite apenas 1 carrinho ativo por usuário e o afterEach
@@ -38,67 +28,29 @@ test.describe('Integridade e regras de negócio - carrinhos', () => {
   // cancelaria o carrinho de outro. A serialização é o que garante o isolamento.
   test.describe.configure({ mode: 'serial' });
 
-  let admin: UsuarioCriado;
-  let tokenAdmin: string;
-  const contasCriadas: ContaAutenticada[] = [];
-  let contasDoTeste: ContaAutenticada[] = [];
-  const produtosCriados: ProdutoCriado[] = [];
+  let contexto: ContextoCarrinhos;
 
   test.beforeAll(async ({ request }) => {
-    const conta = await criarUsuarioAutenticado(request, 'true');
-    admin = conta.usuario;
-    tokenAdmin = conta.token;
+    contexto = await criarContextoCarrinhos(request);
   });
 
   test.beforeEach(() => {
-    contasDoTeste = [];
+    contexto.iniciarTeste();
   });
 
   test.afterEach(async ({ request }) => {
-    for (const conta of contasDoTeste) {
-      await cancelarCompraSeguro(request, conta.token);
-    }
+    await contexto.cancelarContasDoTeste(request);
   });
 
   test.afterAll(async ({ request }) => {
-    for (const conta of contasCriadas) {
-      await cancelarCompraSeguro(request, conta.token);
-    }
-    for (const produto of produtosCriados) {
-      await excluirProduto(request, tokenAdmin, produto.id);
-    }
-    for (const conta of contasCriadas) {
-      await excluirUsuario(request, conta.usuario.id);
-    }
-    await excluirUsuario(request, admin.id);
+    await contexto.limpar(request);
   });
-
-  async function novaConta(
-    request: APIRequestContext,
-  ): Promise<ContaAutenticada> {
-    const conta = await criarUsuarioAutenticado(request, 'false');
-    contasCriadas.push(conta);
-    contasDoTeste.push(conta);
-    return conta;
-  }
-
-  async function novoProduto(
-    request: APIRequestContext,
-    opcoes: { preco: number; estoque: number },
-  ): Promise<ProdutoCriado> {
-    const produto = await criarProdutoTeste(request, tokenAdmin, {
-      preco: opcoes.preco,
-      quantidade: opcoes.estoque,
-    });
-    produtosCriados.push(produto);
-    return produto;
-  }
 
   test('deve executar o fluxo completo de compra concluída @critico', async ({
     request,
   }) => {
-    const conta = await novaConta(request);
-    const produto = await novoProduto(request, { preco: 137, estoque: 8 });
+    const conta = await contexto.novaConta(request);
+    const produto = await contexto.novoProduto(request, { preco: 137, quantidade: 8 });
     const estoqueInicial = await obterEstoque(request, produto.id);
 
     const carrinhoId = await criarCarrinhoTeste(request, conta.token, [
@@ -113,17 +65,13 @@ test.describe('Integridade e regras de negócio - carrinhos', () => {
     expect(carrinho.quantidadeTotal).toBe(3);
 
     const conclusao = await concluirCompra(request, conta.token);
-    expect(conclusao.status()).toBe(200);
-    expect(((await conclusao.json()) as MensagemCarrinho).message).toBe(
-      MENSAGEM_CONCLUSAO_SUCESSO,
-    );
+    const corpoConclusao = await lerJson<MensagemResposta>(conclusao, 200);
+    expect(corpoConclusao.message).toBe(MENSAGEM_EXCLUIDO_SUCESSO);
     await validarContrato('carrinhos.conclusao', conclusao);
 
     const consulta = await request.get(`/carrinhos/${carrinhoId}`);
-    expect(consulta.status()).toBe(400);
-    expect(((await consulta.json()) as ErroCarrinho).message).toBe(
-      MENSAGEM_CARRINHO_NAO_ENCONTRADO,
-    );
+    const corpoConsulta = await lerJson<ErroCarrinho>(consulta, 400);
+    expect(corpoConsulta.message).toBe(MENSAGEM_CARRINHO_NAO_ENCONTRADO);
 
     const estoqueFinal = await obterEstoque(request, produto.id);
     expect(estoqueFinal).toBe(estoqueAposCriar);
@@ -133,8 +81,8 @@ test.describe('Integridade e regras de negócio - carrinhos', () => {
   test('deve executar o fluxo completo de compra cancelada', async ({
     request,
   }) => {
-    const conta = await novaConta(request);
-    const produto = await novoProduto(request, { preco: 148, estoque: 9 });
+    const conta = await contexto.novaConta(request);
+    const produto = await contexto.novoProduto(request, { preco: 148, quantidade: 9 });
     const estoqueInicial = await obterEstoque(request, produto.id);
 
     const carrinhoId = await criarCarrinhoTeste(request, conta.token, [
@@ -145,14 +93,12 @@ test.describe('Integridade e regras de negócio - carrinhos', () => {
     expect(estoqueAposCriar).toBe(estoqueInicial - 4);
 
     const cancelamento = await cancelarCompra(request, conta.token);
-    expect(cancelamento.status()).toBe(200);
-    expect(((await cancelamento.json()) as MensagemCarrinho).message).toBe(
-      MENSAGEM_CANCELAMENTO_SUCESSO,
-    );
+    const corpoCancelamento = await lerJson<MensagemResposta>(cancelamento, 200);
+    expect(corpoCancelamento.message).toBe(MENSAGEM_CANCELAMENTO_SUCESSO);
     await validarContrato('carrinhos.cancelamento', cancelamento);
 
     const consulta = await request.get(`/carrinhos/${carrinhoId}`);
-    expect(consulta.status()).toBe(400);
+    await lerJson<ErroCarrinho>(consulta, 400);
 
     const estoqueFinal = await obterEstoque(request, produto.id);
     expect(estoqueFinal).toBe(estoqueInicial);
@@ -161,9 +107,9 @@ test.describe('Integridade e regras de negócio - carrinhos', () => {
   test('deve associar o carrinho ao usuário do token e isolar operações', async ({
     request,
   }) => {
-    const contaA = await novaConta(request);
-    const contaB = await novaConta(request);
-    const produto = await novoProduto(request, { preco: 159, estoque: 10 });
+    const contaA = await contexto.novaConta(request);
+    const contaB = await contexto.novaConta(request);
+    const produto = await contexto.novoProduto(request, { preco: 159, quantidade: 10 });
 
     const carrinhoIdA = await criarCarrinhoTeste(request, contaA.token, [
       { idProduto: produto.id, quantidade: 2 },
@@ -173,20 +119,16 @@ test.describe('Integridade e regras de negócio - carrinhos', () => {
     expect(carrinhoA.idUsuario).toBe(contaA.usuario.id);
 
     const conclusaoB = await concluirCompra(request, contaB.token);
-    expect(conclusaoB.status()).toBe(200);
-    expect(((await conclusaoB.json()) as MensagemCarrinho).message).toBe(
-      MENSAGEM_USUARIO_SEM_CARRINHO,
-    );
+    const corpoConclusaoB = await lerJson<MensagemResposta>(conclusaoB, 200);
+    expect(corpoConclusaoB.message).toBe(MENSAGEM_USUARIO_SEM_CARRINHO);
 
     const carrinhoAposConclusaoB = await obterCarrinho(request, carrinhoIdA);
     expect(carrinhoAposConclusaoB._id).toBe(carrinhoIdA);
     expect(carrinhoAposConclusaoB.idUsuario).toBe(contaA.usuario.id);
 
     const cancelamentoB = await cancelarCompra(request, contaB.token);
-    expect(cancelamentoB.status()).toBe(200);
-    expect(((await cancelamentoB.json()) as MensagemCarrinho).message).toBe(
-      MENSAGEM_USUARIO_SEM_CARRINHO,
-    );
+    const corpoCancelamentoB = await lerJson<MensagemResposta>(cancelamentoB, 200);
+    expect(corpoCancelamentoB.message).toBe(MENSAGEM_USUARIO_SEM_CARRINHO);
 
     const carrinhoAposCancelamentoB = await obterCarrinho(request, carrinhoIdA);
     expect(carrinhoAposCancelamentoB._id).toBe(carrinhoIdA);
@@ -200,9 +142,9 @@ test.describe('Integridade e regras de negócio - carrinhos', () => {
   test('deve validar quantidade, preço e reposição individual com múltiplos produtos', async ({
     request,
   }) => {
-    const conta = await novaConta(request);
-    const produtoA = await novoProduto(request, { preco: 100, estoque: 10 });
-    const produtoB = await novoProduto(request, { preco: 250, estoque: 8 });
+    const conta = await contexto.novaConta(request);
+    const produtoA = await contexto.novoProduto(request, { preco: 100, quantidade: 10 });
+    const produtoB = await contexto.novoProduto(request, { preco: 250, quantidade: 8 });
     const estoqueInicialA = await obterEstoque(request, produtoA.id);
     const estoqueInicialB = await obterEstoque(request, produtoB.id);
 
@@ -232,10 +174,8 @@ test.describe('Integridade e regras de negócio - carrinhos', () => {
     expect(await obterEstoque(request, produtoB.id)).toBe(estoqueInicialB - 2);
 
     const cancelamento = await cancelarCompra(request, conta.token);
-    expect(cancelamento.status()).toBe(200);
-    expect(((await cancelamento.json()) as MensagemCarrinho).message).toBe(
-      MENSAGEM_CANCELAMENTO_SUCESSO,
-    );
+    const corpoCancelamento = await lerJson<MensagemResposta>(cancelamento, 200);
+    expect(corpoCancelamento.message).toBe(MENSAGEM_CANCELAMENTO_SUCESSO);
     await validarContrato('carrinhos.cancelamento', cancelamento);
 
     expect(await obterEstoque(request, produtoA.id)).toBe(estoqueInicialA);

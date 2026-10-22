@@ -1,22 +1,29 @@
 import { expect, test } from '../fixtures';
-import { validarContrato } from '../helpers/contratos';
-import { fazerLogin } from '../helpers/autenticacao';
 import {
   bearer,
+  fazerLogin,
+  MENSAGEM_CREDENCIAIS_INVALIDAS,
+  MENSAGEM_TOKEN_INVALIDO,
+} from '../helpers/autenticacao';
+import { validarContrato } from '../helpers/contratos';
+import {
   criarProdutoTeste,
   criarUsuarioProdutoTeste,
   excluirProduto,
-  MENSAGEM_TOKEN_INVALIDO,
-  type MensagemResposta,
+  MENSAGEM_PRODUTO_NAO_ENCONTRADO,
   type ProdutoApi,
 } from '../helpers/produtos';
+import {
+  lerJson,
+  MENSAGEM_CADASTRO_SUCESSO,
+  type MensagemResposta,
+} from '../helpers/resposta';
 import {
   excluirUsuario,
   gerarEmailUnico,
   gerarIdUnico,
   gerarNomeUnico,
   type DadosUsuario,
-  type MensagemResposta as MensagemUsuario,
   type UsuarioApi,
   type UsuarioCriado,
 } from '../helpers/usuarios';
@@ -85,19 +92,18 @@ test.describe('Exposição de dados sensíveis e tratamento de erros', () => {
     };
 
     const criacao = await request.post('/usuarios', { data: dados });
-    expect(criacao.status()).toBe(201);
-    const criado = (await criacao.json()) as MensagemUsuario;
+    const criado = await lerJson<MensagemResposta>(criacao, 201);
     idsUsuarios.push(criado._id!);
 
     const consulta = await request.get(`/usuarios/${criado._id}`);
-    expect(consulta.status()).toBe(200);
-
-    const corpo = (await consulta.json()) as UsuarioApi & {
-      authorization?: string;
-      token?: string;
-      hash?: string;
-      salt?: string;
-    };
+    const corpo = await lerJson<
+      UsuarioApi & {
+        authorization?: string;
+        token?: string;
+        hash?: string;
+        salt?: string;
+      }
+    >(consulta, 200);
 
     // Contrato observado: a API devolve o campo `password` do recurso.
     expect(corpo.password).toBe(dados.password);
@@ -119,13 +125,10 @@ test.describe('Exposição de dados sensíveis e tratamento de erros', () => {
       data: { email: usuarioAdmin.email, password: senhaTentada },
     });
 
-    expect(response.status()).toBe(401);
-
-    const corpo = await response.json();
+    const corpo = await lerJson<MensagemResposta>(response, 401);
     expect(JSON.stringify(corpo)).not.toContain(senhaTentada);
 
-    const body = corpo as MensagemResposta;
-    expect(body.message).toBe('Email e/ou senha inválidos');
+    expect(corpo.message).toBe(MENSAGEM_CREDENCIAIS_INVALIDAS);
 
     await validarContrato('login.credenciais-invalidas', response);
   });
@@ -136,10 +139,13 @@ test.describe('Exposição de dados sensíveis e tratamento de erros', () => {
     for (const endpoint of ['/usuarios', '/produtos', '/carrinhos']) {
       const response = await request.get(`${endpoint}/${gerarIdUnico()}`);
 
-      expect(response.status(), `${endpoint}: id inexistente`).toBe(400);
-      const corpo = await response.json();
+      const corpo = await lerJson<MensagemResposta>(
+        response,
+        400,
+        `${endpoint}: id inexistente`,
+      );
       assertSemVazamentoInterno(corpo, `GET ${endpoint}/{id}`);
-      expect((corpo as MensagemResposta).message).toBeTruthy();
+      expect(corpo.message).toBeTruthy();
 
       await validarContrato('erros.mensagem', response);
     }
@@ -152,10 +158,9 @@ test.describe('Exposição de dados sensíveis e tratamento de erros', () => {
       data: { nome: gerarNomeUnico('Sem Token'), preco: 10 },
     });
 
-    expect(response.status()).toBe(401);
-    const corpo = await response.json();
+    const corpo = await lerJson<MensagemResposta>(response, 401);
     assertSemVazamentoInterno(corpo, 'POST /produtos sem token');
-    expect((corpo as MensagemResposta).message).toBe(MENSAGEM_TOKEN_INVALIDO);
+    expect(corpo.message).toBe(MENSAGEM_TOKEN_INVALIDO);
 
     await validarContrato('auth.sem-token', response);
   });
@@ -176,23 +181,19 @@ test.describe('Exposição de dados sensíveis e tratamento de erros', () => {
       headers: { Authorization: bearer(tokenAdmin) },
     });
 
-    expect(response.status()).toBe(201);
-
-    const corpo = await response.json();
+    const corpo = await lerJson<MensagemResposta>(response, 201);
     assertSemVazamentoInterno(corpo, `PUT /produtos/${id}`);
 
-    const body = corpo as MensagemResposta;
-    expect(body.message).toBe('Cadastro realizado com sucesso');
-    expect(body._id).toBeTruthy();
-    idsProdutos.push(body._id!);
+    expect(corpo.message).toBe(MENSAGEM_CADASTRO_SUCESSO);
+    expect(corpo._id).toBeTruthy();
+    idsProdutos.push(corpo._id!);
 
     await validarContrato('produtos.criacao', response);
 
     const consultaUrl = await request.get(`/produtos/${id}`);
-    expect(consultaUrl.status()).toBe(400);
-    const corpoUrl = (await consultaUrl.json()) as MensagemResposta;
+    const corpoUrl = await lerJson<MensagemResposta>(consultaUrl, 400);
     assertSemVazamentoInterno(corpoUrl, `GET /produtos/${id}`);
-    expect(corpoUrl.message).toBe('Produto não encontrado');
+    expect(corpoUrl.message).toBe(MENSAGEM_PRODUTO_NAO_ENCONTRADO);
 
     await validarContrato('erros.mensagem', consultaUrl);
   });
@@ -203,8 +204,11 @@ test.describe('Exposição de dados sensíveis e tratamento de erros', () => {
     for (const endpoint of ['/usuarios', '/produtos', '/carrinhos']) {
       const response = await request.get(`${endpoint}/curto`);
 
-      expect(response.status(), `${endpoint}: id malformado`).toBe(400);
-      const corpo = await response.json();
+      const corpo = await lerJson<Record<string, unknown>>(
+        response,
+        400,
+        `${endpoint}: id malformado`,
+      );
       assertSemVazamentoInterno(corpo, `GET ${endpoint}/curto`);
 
       await validarContrato('erros.id-invalido', response);
@@ -218,12 +222,12 @@ test.describe('Exposição de dados sensíveis e tratamento de erros', () => {
     idsProdutos.push(produto.id);
 
     const consulta = await request.get(`/produtos/${produto.id}`);
-    expect(consulta.status()).toBe(200);
-
-    const corpo = (await consulta.json()) as ProdutoApi & {
-      authorization?: string;
-      token?: string;
-    };
+    const corpo = await lerJson<
+      ProdutoApi & {
+        authorization?: string;
+        token?: string;
+      }
+    >(consulta, 200);
     expect(corpo).not.toHaveProperty('authorization');
     expect(corpo).not.toHaveProperty('token');
   });

@@ -1,4 +1,10 @@
 import { expect, test } from '../fixtures';
+import {
+  lerJson,
+  MENSAGEM_EXCLUIDO_SUCESSO,
+  MENSAGEM_NENHUM_EXCLUIDO,
+  type MensagemResposta,
+} from '../helpers/resposta';
 import { validarContrato } from '../helpers/contratos';
 import { fazerLogin } from '../helpers/autenticacao';
 import { criarCarrinhoTeste, cancelarCompraSeguro } from '../helpers/carrinhos';
@@ -7,7 +13,7 @@ import {
   criarUsuarioTeste,
   excluirUsuario,
   gerarIdUnico,
-  type MensagemResposta,
+  MENSAGEM_USUARIO_NAO_ENCONTRADO,
 } from '../helpers/usuarios';
 
 interface ErroUsuarioComCarrinho {
@@ -32,19 +38,14 @@ test.describe('Exclusão de usuários - DELETE /usuarios/{_id}', () => {
 
     const response = await request.delete(`/usuarios/${usuario.id}`);
 
-    expect(response.status()).toBe(200);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as MensagemResposta;
-    expect(body.message).toBe('Registro excluído com sucesso');
+    const body = await lerJson<MensagemResposta>(response, 200);
+    expect(body.message).toBe(MENSAGEM_EXCLUIDO_SUCESSO);
 
     await validarContrato('usuarios.exclusao', response);
 
     const consulta = await request.get(`/usuarios/${usuario.id}`);
-    expect(consulta.status()).toBe(400);
-
-    const corpo = (await consulta.json()) as MensagemResposta;
-    expect(corpo.message).toBe('Usuário não encontrado');
+    const corpo = await lerJson<MensagemResposta>(consulta, 400);
+    expect(corpo.message).toBe(MENSAGEM_USUARIO_NAO_ENCONTRADO);
 
     await validarContrato('erros.mensagem', consulta);
   });
@@ -56,11 +57,8 @@ test.describe('Exclusão de usuários - DELETE /usuarios/{_id}', () => {
 
     const response = await request.delete(`/usuarios/${id}`);
 
-    expect(response.status()).toBe(200);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as MensagemResposta;
-    expect(body.message).toBe('Nenhum registro excluído');
+    const body = await lerJson<MensagemResposta>(response, 200);
+    expect(body.message).toBe(MENSAGEM_NENHUM_EXCLUIDO);
 
     await validarContrato('usuarios.exclusao', response);
   });
@@ -87,12 +85,7 @@ test.describe('Exclusão de usuários - DELETE /usuarios/{_id}', () => {
 
       const response = await request.delete(`/usuarios/${usuario.id}`);
 
-      expect(response.status()).toBe(400);
-      expect(response.headers()['content-type'] ?? '').toContain(
-        'application/json',
-      );
-
-      const body = (await response.json()) as ErroUsuarioComCarrinho;
+      const body = await lerJson<ErroUsuarioComCarrinho>(response, 400);
       expect(body.message).toBe(
         'Não é permitido excluir usuário com carrinho cadastrado',
       );

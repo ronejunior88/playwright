@@ -1,19 +1,25 @@
 import { expect, test } from '../fixtures';
-import { validarContrato } from '../helpers/contratos';
-import { fazerLogin } from '../helpers/autenticacao';
 import {
   bearer,
+  fazerLogin,
+  MENSAGEM_ROTA_ADMIN,
+  MENSAGEM_TOKEN_INVALIDO,
+} from '../helpers/autenticacao';
+import { validarContrato } from '../helpers/contratos';
+import {
   CASOS_PAYLOAD_INVALIDO,
   criarProdutoTeste,
   criarUsuarioProdutoTeste,
   excluirProduto,
   gerarNomeProdutoUnico,
-  MENSAGEM_ROTA_ADMIN,
-  MENSAGEM_TOKEN_INVALIDO,
-  type ErroValidacaoProduto,
+  MENSAGEM_NOME_PRODUTO_EM_USO,
   type ListaProdutos,
-  type MensagemResposta,
 } from '../helpers/produtos';
+import {
+  lerJson,
+  type ErroValidacao,
+  type MensagemResposta,
+} from '../helpers/resposta';
 import {
   excluirUsuario,
   gerarIdUnico,
@@ -60,15 +66,13 @@ test.describe('Criação de produtos - POST /produtos', () => {
     idsCriados.push(produto.id);
 
     const consulta = await request.get(`/produtos/${produto.id}`);
-    expect(consulta.status()).toBe(200);
-
-    const corpo = (await consulta.json()) as {
+    const corpo = await lerJson<{
       _id: string;
       nome: string;
       preco: number;
       descricao: string;
       quantidade: number;
-    };
+    }>(consulta, 200);
     expect(corpo._id).toBe(produto.id);
     expect(corpo.nome).toBe(produto.nome);
     expect(corpo.preco).toBe(produto.preco);
@@ -90,10 +94,7 @@ test.describe('Criação de produtos - POST /produtos', () => {
 
     const response = await request.post('/produtos', { data: payload });
 
-    expect(response.status()).toBe(401);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as MensagemResposta;
+    const body = await lerJson<MensagemResposta>(response, 401);
     expect(body.message).toBe(MENSAGEM_TOKEN_INVALIDO);
     expect(body).not.toHaveProperty('_id');
 
@@ -102,8 +103,7 @@ test.describe('Criação de produtos - POST /produtos', () => {
     const consulta = await request.get('/produtos', {
       params: { nome: payload.nome },
     });
-    expect(consulta.status()).toBe(200);
-    const lista = (await consulta.json()) as ListaProdutos;
+    const lista = await lerJson<ListaProdutos>(consulta, 200);
     expect(lista.quantidade).toBe(0);
   });
 
@@ -120,18 +120,14 @@ test.describe('Criação de produtos - POST /produtos', () => {
       headers: { Authorization: bearer('token-invalido') },
     });
 
-    expect(response.status()).toBe(401);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as MensagemResposta;
+    const body = await lerJson<MensagemResposta>(response, 401);
     expect(body.message).toBe(MENSAGEM_TOKEN_INVALIDO);
     expect(body).not.toHaveProperty('_id');
 
     const consulta = await request.get('/produtos', {
       params: { nome: payload.nome },
     });
-    expect(consulta.status()).toBe(200);
-    const lista = (await consulta.json()) as ListaProdutos;
+    const lista = await lerJson<ListaProdutos>(consulta, 200);
     expect(lista.quantidade).toBe(0);
   });
 
@@ -157,12 +153,7 @@ test.describe('Criação de produtos - POST /produtos', () => {
         headers: { Authorization: caso.valor },
       });
 
-      expect(response.status()).toBe(401);
-      expect(response.headers()['content-type'] ?? '').toContain(
-        'application/json',
-      );
-
-      const body = (await response.json()) as MensagemResposta;
+      const body = await lerJson<MensagemResposta>(response, 401);
       expect(body.message).toBe(MENSAGEM_TOKEN_INVALIDO);
       expect(body).not.toHaveProperty('_id');
 
@@ -171,8 +162,7 @@ test.describe('Criação de produtos - POST /produtos', () => {
       const consulta = await request.get('/produtos', {
         params: { nome: payload.nome },
       });
-      expect(consulta.status()).toBe(200);
-      const lista = (await consulta.json()) as ListaProdutos;
+      const lista = await lerJson<ListaProdutos>(consulta, 200);
       expect(lista.quantidade).toBe(0);
     });
   }
@@ -192,10 +182,7 @@ test.describe('Criação de produtos - POST /produtos', () => {
       headers: { Authorization: bearer(tokenComum) },
     });
 
-    expect(response.status()).toBe(403);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as MensagemResposta;
+    const body = await lerJson<MensagemResposta>(response, 403);
     expect(body.message).toBe(MENSAGEM_ROTA_ADMIN);
     expect(body).not.toHaveProperty('_id');
 
@@ -204,8 +191,7 @@ test.describe('Criação de produtos - POST /produtos', () => {
     const consulta = await request.get('/produtos', {
       params: { nome: payload.nome },
     });
-    expect(consulta.status()).toBe(200);
-    const lista = (await consulta.json()) as ListaProdutos;
+    const lista = await lerJson<ListaProdutos>(consulta, 200);
     expect(lista.quantidade).toBe(0);
   });
 
@@ -223,11 +209,8 @@ test.describe('Criação de produtos - POST /produtos', () => {
       headers: { Authorization: bearer(tokenAdmin) },
     });
 
-    expect(segundo.status()).toBe(400);
-    expect(segundo.headers()['content-type'] ?? '').toContain('application/json');
-
-    const segundoBody = (await segundo.json()) as MensagemResposta;
-    expect(segundoBody.message).toBe('Já existe produto com esse nome');
+    const segundoBody = await lerJson<MensagemResposta>(segundo, 400);
+    expect(segundoBody.message).toBe(MENSAGEM_NOME_PRODUTO_EM_USO);
     expect(segundoBody).not.toHaveProperty('_id');
 
     await validarContrato('produtos.nome-duplicado', segundo);
@@ -235,9 +218,7 @@ test.describe('Criação de produtos - POST /produtos', () => {
     const consulta = await request.get('/produtos', {
       params: { nome: produto.nome },
     });
-    expect(consulta.status()).toBe(200);
-
-    const lista = (await consulta.json()) as ListaProdutos;
+    const lista = await lerJson<ListaProdutos>(consulta, 200);
     expect(lista.quantidade).toBe(1);
     expect(lista.produtos).toHaveLength(1);
     expect(lista.produtos[0]._id).toBe(produto.id);
@@ -266,10 +247,7 @@ test.describe('Criação de produtos - POST /produtos', () => {
     // explicitamente os campos não documentados em vez de ignorá-los. A forma
     // do corpo pode variar (lista por campo ou mensagem genérica), mas o
     // resultado é sempre 400 e nenhum produto é criado.
-    expect(response.status()).toBe(400);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as Record<string, string>;
+    const body = await lerJson<Record<string, string>>(response, 400);
     const rejeitouCampo =
       body._id === '_id não é permitido' ||
       body.administrador === 'administrador não é permitido' ||
@@ -282,8 +260,7 @@ test.describe('Criação de produtos - POST /produtos', () => {
     await validarContrato('erros.validacao-campos', response);
 
     const consulta = await request.get('/produtos', { params: { nome } });
-    expect(consulta.status()).toBe(200);
-    const lista = (await consulta.json()) as ListaProdutos;
+    const lista = await lerJson<ListaProdutos>(consulta, 200);
     expect(lista.quantidade).toBe(0);
   });
 
@@ -296,10 +273,7 @@ test.describe('Criação de produtos - POST /produtos', () => {
         headers: { Authorization: bearer(tokenAdmin) },
       });
 
-      expect(response.status()).toBe(400);
-      expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-      const body = (await response.json()) as ErroValidacaoProduto;
+      const body = await lerJson<ErroValidacao>(response, 400);
       expect(body).toMatchObject(caso.corpoEsperado);
       expect(body).not.toHaveProperty('_id');
 

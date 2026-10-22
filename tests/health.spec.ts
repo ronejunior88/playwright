@@ -1,17 +1,7 @@
 import { expect, test } from './fixtures';
 import { validarContrato } from './helpers/contratos';
-
-interface Usuario {
-  _id: string;
-  nome: string;
-  email: string;
-  administrador: string;
-}
-
-interface ListaUsuarios {
-  quantidade: number;
-  usuarios: Usuario[];
-}
+import { lerJson } from './helpers/resposta';
+import { type ListaUsuarios } from './helpers/usuarios';
 
 test.describe('Health check da API ServeRest', () => {
   test('deve retornar a lista de usuários com estrutura válida @smoke @critico', async ({
@@ -19,12 +9,7 @@ test.describe('Health check da API ServeRest', () => {
   }) => {
     const response = await request.get('/usuarios');
 
-    expect(response.status()).toBe(200);
-
-    const contentType = response.headers()['content-type'] ?? '';
-    expect(contentType).toContain('application/json');
-
-    const body = (await response.json()) as ListaUsuarios;
+    const body = await lerJson<ListaUsuarios>(response, 200);
 
     expect(body).toHaveProperty('quantidade');
     expect(typeof body.quantidade).toBe('number');

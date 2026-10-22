@@ -1,14 +1,19 @@
 import { expect, test } from '../fixtures';
+import {
+  lerJson,
+  MENSAGEM_CADASTRO_SUCESSO,
+  type ErroValidacao,
+  type MensagemResposta,
+} from '../helpers/resposta';
 import { validarMensagemComId, validarUsuario } from '../helpers/contrato';
 import { validarContrato } from '../helpers/contratos';
 import {
   excluirUsuario,
   gerarEmailUnico,
   gerarNomeUnico,
+  MENSAGEM_EMAIL_EM_USO,
   type DadosUsuario,
-  type ErroValidacao,
   type ListaUsuarios,
-  type MensagemResposta,
   type UsuarioApi,
 } from '../helpers/usuarios';
 
@@ -33,13 +38,8 @@ test.describe('Criação de usuários - POST /usuarios', () => {
 
     const response = await request.post('/usuarios', { data: dados });
 
-    expect(response.status()).toBe(201);
-
-    const contentType = response.headers()['content-type'] ?? '';
-    expect(contentType).toContain('application/json');
-
-    const body = (await response.json()) as MensagemResposta;
-    expect(body.message).toBe('Cadastro realizado com sucesso');
+    const body = await lerJson<MensagemResposta>(response, 201);
+    expect(body.message).toBe(MENSAGEM_CADASTRO_SUCESSO);
     validarMensagemComId(body);
 
     await validarContrato('usuarios.criacao', response);
@@ -47,9 +47,7 @@ test.describe('Criação de usuários - POST /usuarios', () => {
     idsCriados.push(body._id!);
 
     const consulta = await request.get(`/usuarios/${body._id}`);
-    expect(consulta.status()).toBe(200);
-
-    const corpo = (await consulta.json()) as UsuarioApi;
+    const corpo = await lerJson<UsuarioApi>(consulta, 200);
     validarUsuario(corpo);
     expect(corpo._id).toBe(body._id);
     expect(corpo.nome).toBe(dados.nome);
@@ -69,21 +67,14 @@ test.describe('Criação de usuários - POST /usuarios', () => {
     };
 
     const primeiro = await request.post('/usuarios', { data: dados });
-    expect(primeiro.status()).toBe(201);
-
-    const primeiroBody = (await primeiro.json()) as MensagemResposta;
+    const primeiroBody = await lerJson<MensagemResposta>(primeiro, 201);
     expect(primeiroBody._id, 'o primeiro cadastro deve retornar um _id').toBeTruthy();
     idsCriados.push(primeiroBody._id!);
 
     const segundo = await request.post('/usuarios', { data: dados });
 
-    expect(segundo.status()).toBe(400);
-
-    const contentType = segundo.headers()['content-type'] ?? '';
-    expect(contentType).toContain('application/json');
-
-    const segundoBody = (await segundo.json()) as MensagemResposta;
-    expect(segundoBody.message).toBe('Este email já está sendo usado');
+    const segundoBody = await lerJson<MensagemResposta>(segundo, 400);
+    expect(segundoBody.message).toBe(MENSAGEM_EMAIL_EM_USO);
     expect(segundoBody).not.toHaveProperty('_id');
 
     await validarContrato('usuarios.email-duplicado', segundo);
@@ -91,9 +82,7 @@ test.describe('Criação de usuários - POST /usuarios', () => {
     const consulta = await request.get('/usuarios', {
       params: { email: dados.email },
     });
-    expect(consulta.status()).toBe(200);
-
-    const lista = (await consulta.json()) as ListaUsuarios;
+    const lista = await lerJson<ListaUsuarios>(consulta, 200);
     expect(lista.quantidade).toBe(1);
     expect(lista.usuarios).toHaveLength(1);
     expect(lista.usuarios[0]._id).toBe(primeiroBody._id);
@@ -108,10 +97,7 @@ test.describe('Criação de usuários - POST /usuarios', () => {
       },
     });
 
-    expect(response.status()).toBe(400);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as ErroValidacao;
+    const body = await lerJson<ErroValidacao>(response, 400);
     expect(body.nome).toBe('nome é obrigatório');
     expect(body).not.toHaveProperty('_id');
 
@@ -129,10 +115,7 @@ test.describe('Criação de usuários - POST /usuarios', () => {
       },
     });
 
-    expect(response.status()).toBe(400);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as ErroValidacao;
+    const body = await lerJson<ErroValidacao>(response, 400);
     expect(body.email).toBe('email é obrigatório');
     expect(body).not.toHaveProperty('_id');
 
@@ -150,10 +133,7 @@ test.describe('Criação de usuários - POST /usuarios', () => {
       },
     });
 
-    expect(response.status()).toBe(400);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as ErroValidacao;
+    const body = await lerJson<ErroValidacao>(response, 400);
     expect(body.password).toBe('password é obrigatório');
     expect(body).not.toHaveProperty('_id');
 
@@ -171,10 +151,7 @@ test.describe('Criação de usuários - POST /usuarios', () => {
       },
     });
 
-    expect(response.status()).toBe(400);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as ErroValidacao;
+    const body = await lerJson<ErroValidacao>(response, 400);
     expect(body.administrador).toBe('administrador é obrigatório');
     expect(body).not.toHaveProperty('_id');
 
@@ -184,10 +161,7 @@ test.describe('Criação de usuários - POST /usuarios', () => {
   test('deve retornar erro ao enviar payload vazio', async ({ request }) => {
     const response = await request.post('/usuarios', { data: {} });
 
-    expect(response.status()).toBe(400);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as ErroValidacao;
+    const body = await lerJson<ErroValidacao>(response, 400);
     expect(body.nome).toBe('nome é obrigatório');
     expect(body.email).toBe('email é obrigatório');
     expect(body.password).toBe('password é obrigatório');
@@ -209,10 +183,7 @@ test.describe('Criação de usuários - POST /usuarios', () => {
       },
     });
 
-    expect(response.status()).toBe(400);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as ErroValidacao;
+    const body = await lerJson<ErroValidacao>(response, 400);
     expect(body.email).toBe('email deve ser um email válido');
     expect(body).not.toHaveProperty('_id');
 
@@ -231,10 +202,7 @@ test.describe('Criação de usuários - POST /usuarios', () => {
       },
     });
 
-    expect(response.status()).toBe(400);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as ErroValidacao;
+    const body = await lerJson<ErroValidacao>(response, 400);
     expect(body.nome).toBe('nome não pode ficar em branco');
     expect(body).not.toHaveProperty('_id');
 
@@ -253,10 +221,7 @@ test.describe('Criação de usuários - POST /usuarios', () => {
       },
     });
 
-    expect(response.status()).toBe(400);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as ErroValidacao;
+    const body = await lerJson<ErroValidacao>(response, 400);
     expect(body.email).toBe('email não pode ficar em branco');
     expect(body).not.toHaveProperty('_id');
 
@@ -275,10 +240,7 @@ test.describe('Criação de usuários - POST /usuarios', () => {
       },
     });
 
-    expect(response.status()).toBe(400);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as ErroValidacao;
+    const body = await lerJson<ErroValidacao>(response, 400);
     expect(body.password).toBe('password não pode ficar em branco');
     expect(body).not.toHaveProperty('_id');
 
@@ -297,10 +259,7 @@ test.describe('Criação de usuários - POST /usuarios', () => {
       },
     });
 
-    expect(response.status()).toBe(400);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as ErroValidacao;
+    const body = await lerJson<ErroValidacao>(response, 400);
     expect(body.administrador).toBe("administrador deve ser 'true' ou 'false'");
     expect(body).not.toHaveProperty('_id');
 

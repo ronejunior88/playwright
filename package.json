@@ -10,6 +10,8 @@
     "test:criticos": "playwright test --grep @critico",
     "test:paralelo": "playwright test --workers=2",
     "test:latencia": "playwright test --config=playwright.latencia.config.ts",
+    "test:contratos": "playwright test tests/contratos/schema.spec.ts tests/contratos/contratos.spec.ts",
+    "test:contratos:api": "playwright test tests/contratos/contratos-api.spec.ts",
     "typecheck": "tsc --noEmit",
     "report": "playwright show-report"
   },

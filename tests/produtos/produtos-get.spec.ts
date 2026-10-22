@@ -4,6 +4,7 @@ import {
   validarListaProdutos,
   validarProduto,
 } from '../helpers/contrato';
+import { validarContrato } from '../helpers/contratos';
 import { fazerLogin } from '../helpers/autenticacao';
 import {
   criarProdutoTeste,
@@ -56,6 +57,8 @@ test.describe('Consulta de produtos - GET /produtos', () => {
 
     validarListaProdutos(body);
     expect(body.quantidade).toBe(body.produtos.length);
+
+    await validarContrato('produtos.lista', response);
   });
 
   test('deve retornar somente o produto esperado ao filtrar por id', async ({
@@ -180,6 +183,8 @@ test.describe('Consulta de produtos - GET /produtos', () => {
     expect(body.preco).toBe(produto.preco);
     expect(body.descricao).toBe(produto.descricao);
     expect(body.quantidade).toBe(produto.quantidade);
+
+    await validarContrato('produtos.item', response);
   });
 
   test('deve rejeitar filtro de query com chave não permitida', async ({
@@ -199,6 +204,8 @@ test.describe('Consulta de produtos - GET /produtos', () => {
     );
     expect(body).not.toHaveProperty('produtos');
     expect(body).not.toHaveProperty('quantidade');
+
+    await validarContrato('erros.validacao-campos', response);
   });
 
   test('deve retornar erro ao consultar produto inexistente', async ({
@@ -214,6 +221,8 @@ test.describe('Consulta de produtos - GET /produtos', () => {
     const body = (await response.json()) as MensagemResposta;
     expect(body.message).toBe('Produto não encontrado');
     expect(body).not.toHaveProperty('nome');
+
+    await validarContrato('erros.mensagem', response);
   });
 
   test('deve retornar erro ao consultar produto com id de formato inválido', async ({
@@ -226,5 +235,7 @@ test.describe('Consulta de produtos - GET /produtos', () => {
 
     const body = (await response.json()) as ErroValidacaoProduto;
     expect(body.id).toBe('id deve ter exatamente 16 caracteres alfanuméricos');
+
+    await validarContrato('erros.id-invalido', response);
   });
 });

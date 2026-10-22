@@ -1,4 +1,5 @@
 import { expect, test } from './fixtures';
+import { validarContrato } from './helpers/contratos';
 
 interface Usuario {
   _id: string;
@@ -36,5 +37,7 @@ test.describe('Health check da API ServeRest', () => {
       expect(typeof usuario.nome).toBe('string');
       expect(typeof usuario.email).toBe('string');
     }
+
+    await validarContrato('usuarios.lista', response);
   });
 });

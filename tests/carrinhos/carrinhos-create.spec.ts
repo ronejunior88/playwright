@@ -1,5 +1,6 @@
 import { type APIRequestContext } from '@playwright/test';
 import { expect, test } from '../fixtures';
+import { validarContrato } from '../helpers/contratos';
 import {
   cancelarCompraSeguro,
   CASOS_PAYLOAD_CARRINHO_INVALIDO,
@@ -138,6 +139,8 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
     const body = (await response.json()) as ErroCarrinho;
     expect(body.message).toBe(MENSAGEM_TOKEN_CARRINHO);
 
+    await validarContrato('auth.sem-token', response);
+
     const lista = await listarCarrinhos(request, { idUsuario: conta.usuario.id });
     expect(lista.quantidade).toBe(0);
     expect(await obterEstoque(request, produto.id)).toBe(estoqueInicial);
@@ -160,6 +163,8 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
 
     const body = (await response.json()) as ErroCarrinho;
     expect(body.message).toBe(MENSAGEM_TOKEN_CARRINHO);
+
+    await validarContrato('auth.sem-token', response);
 
     const lista = await listarCarrinhos(request, { idUsuario: conta.usuario.id });
     expect(lista.quantidade).toBe(0);
@@ -185,6 +190,8 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
 
     const body = (await response.json()) as ErroCarrinho;
     expect(body.message).toBe(MENSAGEM_TOKEN_CARRINHO);
+
+    await validarContrato('auth.sem-token', response);
 
     const lista = await listarCarrinhos(request, { idUsuario: conta.usuario.id });
     expect(lista.quantidade).toBe(0);
@@ -233,6 +240,8 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
     const body = (await response.json()) as ErroCarrinho;
     expect(body.message).toBe(MENSAGEM_SEGUNDO_CARRINHO);
 
+    await validarContrato('erros.mensagem', response);
+
     const carrinhoOriginal = await obterCarrinho(request, carrinhoId);
     expect(carrinhoOriginal.produtos[0].idProduto).toBe(produto.id);
 
@@ -267,6 +276,8 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
     expect(body.message).toBe(MENSAGEM_PRODUTO_DUPLICADO);
     expect(body.idProdutosDuplicados).toContain(produto.id);
 
+    await validarContrato('erros.mensagem', response);
+
     const lista = await listarCarrinhos(request, { idUsuario: conta.usuario.id });
     expect(lista.quantidade).toBe(0);
     expect(await obterEstoque(request, produto.id)).toBe(estoqueInicial);
@@ -291,6 +302,8 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
     expect(body.item?.idProduto).toBe(idInexistente);
     expect(body.item?.quantidade).toBe(1);
     expect(body.item?.index).toBe(0);
+
+    await validarContrato('erros.mensagem', response);
 
     const lista = await listarCarrinhos(request, { idUsuario: conta.usuario.id });
     expect(lista.quantidade).toBe(0);
@@ -319,6 +332,8 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
     expect(body.message).toBe(MENSAGEM_ESTOQUE_INSUFICIENTE);
     expect(body.item?.idProduto).toBe(produto.id);
     expect(body.item?.quantidadeEstoque).toBe(estoqueInicial);
+
+    await validarContrato('erros.mensagem', response);
 
     const lista = await listarCarrinhos(request, { idUsuario: conta.usuario.id });
     expect(lista.quantidade).toBe(0);
@@ -370,6 +385,15 @@ test.describe('Criação de carrinhos - payloads inválidos - POST /carrinhos', 
       expect(body).toMatchObject(caso.corpoEsperado);
       expect(body).not.toHaveProperty('_id');
 
+      // O formato depende do erro: campo inválido gera mapa por campo, erro
+      // de negócio gera `{ message }`.
+      await validarContrato(
+        'message' in caso.corpoEsperado
+          ? 'erros.mensagem'
+          : 'erros.validacao-campos',
+        response,
+      );
+
       const lista = await listarCarrinhos(request, {
         idUsuario: conta.usuario.id,
       });
@@ -403,6 +427,8 @@ test.describe('Criação de carrinhos - corpo de sucesso - POST /carrinhos', () 
       expect(body.message).toBe('Cadastro realizado com sucesso');
       expect(typeof body._id).toBe('string');
       expect(body._id!.length).toBeGreaterThan(0);
+
+      await validarContrato('carrinhos.criacao', response);
     } finally {
       await cancelarCompraSeguro(request, conta.token);
       await excluirProduto(request, adminConta.token, produto.id);

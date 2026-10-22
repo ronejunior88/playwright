@@ -1,5 +1,6 @@
 import { type APIRequestContext } from '@playwright/test';
 import { expect, test } from '../fixtures';
+import { validarContrato } from '../helpers/contratos';
 import {
   cancelarCompra,
   cancelarCompraSeguro,
@@ -116,6 +117,7 @@ test.describe('Integridade e regras de negócio - carrinhos', () => {
     expect(((await conclusao.json()) as MensagemCarrinho).message).toBe(
       MENSAGEM_CONCLUSAO_SUCESSO,
     );
+    await validarContrato('carrinhos.conclusao', conclusao);
 
     const consulta = await request.get(`/carrinhos/${carrinhoId}`);
     expect(consulta.status()).toBe(400);
@@ -147,6 +149,7 @@ test.describe('Integridade e regras de negócio - carrinhos', () => {
     expect(((await cancelamento.json()) as MensagemCarrinho).message).toBe(
       MENSAGEM_CANCELAMENTO_SUCESSO,
     );
+    await validarContrato('carrinhos.cancelamento', cancelamento);
 
     const consulta = await request.get(`/carrinhos/${carrinhoId}`);
     expect(consulta.status()).toBe(400);
@@ -233,6 +236,7 @@ test.describe('Integridade e regras de negócio - carrinhos', () => {
     expect(((await cancelamento.json()) as MensagemCarrinho).message).toBe(
       MENSAGEM_CANCELAMENTO_SUCESSO,
     );
+    await validarContrato('carrinhos.cancelamento', cancelamento);
 
     expect(await obterEstoque(request, produtoA.id)).toBe(estoqueInicialA);
     expect(await obterEstoque(request, produtoB.id)).toBe(estoqueInicialB);

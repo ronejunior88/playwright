@@ -5,6 +5,7 @@ import {
   validarErroDeCampos,
   validarListaCarrinhos,
 } from '../helpers/contrato';
+import { validarContrato } from '../helpers/contratos';
 import {
   cancelarCompraSeguro,
   criarCarrinhoTeste,
@@ -14,8 +15,10 @@ import {
   MENSAGEM_ID_INVALIDO_CARRINHO,
   obterCarrinho,
   obterEstoque,
+  type CarrinhoApi,
   type ErroCarrinho,
   type ItemCarrinho,
+  type ListaCarrinhos,
 } from '../helpers/carrinhos';
 import {
   criarProdutoTeste,
@@ -104,13 +107,20 @@ test.describe('Consulta de carrinhos - GET /carrinhos', () => {
   }
 
   test('deve listar carrinhos com estrutura válida', async ({ request }) => {
-    const lista = await listarCarrinhos(request);
+    const response = await request.get('/carrinhos');
+
+    expect(response.status()).toBe(200);
+    expect(response.headers()['content-type'] ?? '').toContain('application/json');
+
+    const lista = (await response.json()) as ListaCarrinhos;
 
     expect(typeof lista.quantidade).toBe('number');
     expect(Array.isArray(lista.carrinhos)).toBe(true);
     expect(lista.quantidade).toBe(lista.carrinhos.length);
 
     validarListaCarrinhos(lista);
+
+    await validarContrato('carrinhos.lista', response);
   });
 
   test('deve filtrar carrinhos por _id', async ({ request }) => {
@@ -243,6 +253,8 @@ test.describe('Consulta de carrinhos - GET /carrinhos', () => {
     );
     expect(body).not.toHaveProperty('carrinhos');
     expect(body).not.toHaveProperty('quantidade');
+
+    await validarContrato('erros.validacao-campos', response);
   });
 
   test('deve consultar um carrinho por id válido com cálculos corretos', async ({
@@ -254,7 +266,10 @@ test.describe('Consulta de carrinhos - GET /carrinhos', () => {
       compra: 4,
     });
 
-    const carrinho = await obterCarrinho(request, cenario.carrinhoId);
+    const response = await request.get(`/carrinhos/${cenario.carrinhoId}`);
+    expect(response.status()).toBe(200);
+
+    const carrinho = (await response.json()) as CarrinhoApi;
 
     validarCarrinho(carrinho);
     expect(carrinho._id).toBe(cenario.carrinhoId);
@@ -267,6 +282,8 @@ test.describe('Consulta de carrinhos - GET /carrinhos', () => {
     expect(item.precoUnitario).toBe(cenario.produto.preco);
     expect(carrinho.precoTotal).toBe(item.precoUnitario * item.quantidade);
     expect(carrinho.quantidadeTotal).toBe(item.quantidade);
+
+    await validarContrato('carrinhos.item', response);
   });
 
   test('deve retornar erro ao consultar carrinho inexistente', async ({
@@ -282,6 +299,8 @@ test.describe('Consulta de carrinhos - GET /carrinhos', () => {
     const body = (await response.json()) as ErroCarrinho;
     expect(body.message).toBe(MENSAGEM_CARRINHO_NAO_ENCONTRADO);
     expect(body).not.toHaveProperty('carrinhos');
+
+    await validarContrato('erros.mensagem', response);
   });
 
   test('deve retornar erro ao consultar carrinho com id de formato inválido', async ({
@@ -296,6 +315,8 @@ test.describe('Consulta de carrinhos - GET /carrinhos', () => {
 
     const body = (await response.json()) as ErroCarrinho;
     expect(body.id).toBe(MENSAGEM_ID_INVALIDO_CARRINHO);
+
+    await validarContrato('erros.id-invalido', response);
   });
 
   test('deve reduzir o estoque ao criar o carrinho consultado', async ({

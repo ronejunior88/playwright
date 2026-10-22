@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures';
+import { validarContrato } from '../helpers/contratos';
 import { fazerLogin } from '../helpers/autenticacao';
 import {
   bearer,
@@ -100,6 +101,8 @@ test.describe('Validação de segurança de entradas - produtos', () => {
     const serializado = JSON.stringify(corpo).toLowerCase();
     expect(serializado).not.toContain('stack');
     expect(serializado).not.toContain('syntaxerror');
+
+    await validarContrato('erros.mensagem', response);
   });
 
   test('deve rejeitar campos não documentados no payload de produto (schema estrito)', async ({
@@ -133,6 +136,8 @@ test.describe('Validação de segurança de entradas - produtos', () => {
       'campos não documentados devem ser rejeitados',
     ).toBe(true);
 
+    await validarContrato('erros.validacao-campos', response);
+
     const consulta = await request.get('/produtos', { params: { nome } });
     const lista = (await consulta.json()) as { quantidade: number };
     expect(lista.quantidade).toBe(0);
@@ -151,6 +156,8 @@ test.describe('Validação de segurança de entradas - produtos', () => {
     expect(corpo).not.toHaveProperty('_id');
     expect(corpo.nome).toBe('nome é obrigatório');
     expect(corpo.quantidade).toBe('quantidade é obrigatório');
+
+    await validarContrato('erros.validacao-campos', response);
   });
 
   test('deve rejeitar id de produto fora do formato documentado (16 alfanuméricos)', async ({
@@ -159,6 +166,8 @@ test.describe('Validação de segurança de entradas - produtos', () => {
     for (const idInvalido of ['curto', 'x'.repeat(17), '!!!@@@###$$$%%%%']) {
       const response = await request.get(`/produtos/${idInvalido}`);
       expect(response.status(), `id "${idInvalido}"`).toBeLessThan(500);
+
+      await validarContrato('erros.id-invalido', response);
     }
   });
 });
@@ -194,6 +203,8 @@ test.describe('Validação de segurança de entradas - usuários', () => {
       'resposta deve ser uma rejeição reconhecível',
     ).toBe(true);
 
+    await validarContrato('erros.validacao-campos', response);
+
     const consulta = await request.get('/usuarios', {
       params: { email: dados.email },
     });
@@ -218,6 +229,8 @@ test.describe('Validação de segurança de entradas - usuários', () => {
 
       const corpo = (await response.json()) as ErroValidacao;
       expect(corpo.email).toBe('email deve ser um email válido');
+
+      await validarContrato('erros.validacao-campos', response);
     }
   });
 });

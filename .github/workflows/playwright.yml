@@ -24,6 +24,8 @@ jobs:
         run: npm ci
       - name: Type check
         run: npm run typecheck
+      - name: Contract tests (local, sem rede)
+        run: npm run test:contratos
       - name: Smoke tests
         run: npm run test:smoke
       - name: Critical tests

@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures';
+import { validarContrato } from '../helpers/contratos';
 import {
   criarUsuarioTeste,
   excluirUsuario,
@@ -58,6 +59,8 @@ test.describe('Login da API ServeRest', () => {
     const token = body.authorization!.slice('Bearer '.length);
     expect(token.length).toBeGreaterThan(0);
     expect(token.split('.').length).toBe(3);
+
+    await validarContrato('login.sucesso', response);
   });
 
   test('deve rejeitar login com senha incorreta @smoke @critico', async ({ request }) => {
@@ -79,6 +82,8 @@ test.describe('Login da API ServeRest', () => {
     expect(typeof body.message).toBe('string');
     expect(body.message).toBe('Email e/ou senha inválidos');
     expect(body).not.toHaveProperty('authorization');
+
+    await validarContrato('login.credenciais-invalidas', response);
   });
 
   test('deve rejeitar login com email inexistente @critico', async ({ request }) => {
@@ -100,6 +105,8 @@ test.describe('Login da API ServeRest', () => {
     expect(typeof body.message).toBe('string');
     expect(body.message).toBe('Email e/ou senha inválidos');
     expect(body).not.toHaveProperty('authorization');
+
+    await validarContrato('login.credenciais-invalidas', response);
   });
 
   test('deve retornar erro ao enviar payload vazio', async ({ request }) => {
@@ -117,6 +124,8 @@ test.describe('Login da API ServeRest', () => {
     expect(body).toHaveProperty('password');
     expect(body.password).toBe('password é obrigatório');
     expect(body).not.toHaveProperty('authorization');
+
+    await validarContrato('login.payload-invalido', response);
   });
 
   test('deve retornar erro ao enviar login sem email', async ({ request }) => {
@@ -136,6 +145,8 @@ test.describe('Login da API ServeRest', () => {
     expect(body).toHaveProperty('email');
     expect(body.email).toBe('email é obrigatório');
     expect(body).not.toHaveProperty('authorization');
+
+    await validarContrato('login.payload-invalido', response);
   });
 
   test('deve retornar erro ao enviar login sem password', async ({
@@ -157,6 +168,8 @@ test.describe('Login da API ServeRest', () => {
     expect(body).toHaveProperty('password');
     expect(body.password).toBe('password é obrigatório');
     expect(body).not.toHaveProperty('authorization');
+
+    await validarContrato('login.payload-invalido', response);
   });
 
   test('deve retornar erro ao enviar email com formato inválido', async ({
@@ -179,6 +192,8 @@ test.describe('Login da API ServeRest', () => {
     expect(body).toHaveProperty('email');
     expect(body.email).toBe('email deve ser um email válido');
     expect(body).not.toHaveProperty('authorization');
+
+    await validarContrato('login.payload-invalido', response);
   });
 
   test('deve retornar erro ao enviar email e senha vazios', async ({
@@ -203,6 +218,8 @@ test.describe('Login da API ServeRest', () => {
     expect(body).toHaveProperty('password');
     expect(body.password).toBe('password não pode ficar em branco');
     expect(body).not.toHaveProperty('authorization');
+
+    await validarContrato('login.payload-invalido', response);
   });
 
   test('deve retornar erro ao enviar email vazio com senha válida', async ({
@@ -224,6 +241,8 @@ test.describe('Login da API ServeRest', () => {
     expect(body).toHaveProperty('email');
     expect(body.email).toBe('email não pode ficar em branco');
     expect(body).not.toHaveProperty('authorization');
+
+    await validarContrato('login.payload-invalido', response);
   });
 
   test('deve rejeitar login com campos de tipo incorreto (não texto)', async ({
@@ -257,5 +276,7 @@ test.describe('Login da API ServeRest', () => {
       indicouCampo,
       'login com tipos incorretos deve ser rejeitado',
     ).toBe(true);
+
+    await validarContrato('login.payload-invalido', response);
   });
 });

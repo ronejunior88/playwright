@@ -1,5 +1,6 @@
 import { type APIRequestContext } from '@playwright/test';
 import { expect, test } from '../fixtures';
+import { validarContrato } from '../helpers/contratos';
 import {
   cancelarCompra,
   cancelarCompraSeguro,
@@ -115,6 +116,8 @@ test.describe('Cancelamento de compra - DELETE /carrinhos/cancelar-compra', () =
     const body = (await response.json()) as MensagemCarrinho;
     expect(body.message).toBe(MENSAGEM_CANCELAMENTO_SUCESSO);
 
+    await validarContrato('carrinhos.cancelamento', response);
+
     const consulta = await request.get(`/carrinhos/${carrinhoId}`);
     expect(consulta.status()).toBe(400);
     const corpoConsulta = (await consulta.json()) as ErroCarrinho;
@@ -143,6 +146,8 @@ test.describe('Cancelamento de compra - DELETE /carrinhos/cancelar-compra', () =
 
     const body = (await response.json()) as MensagemCarrinho;
     expect(body.message).toBe(MENSAGEM_USUARIO_SEM_CARRINHO);
+
+    await validarContrato('carrinhos.cancelamento', response);
   });
 
   test('deve rejeitar o cancelamento sem token de autorização', async ({
@@ -157,6 +162,8 @@ test.describe('Cancelamento de compra - DELETE /carrinhos/cancelar-compra', () =
 
     const body = (await response.json()) as ErroCarrinho;
     expect(body.message).toBe(MENSAGEM_TOKEN_CARRINHO);
+
+    await validarContrato('auth.sem-token', response);
   });
 
   test('deve rejeitar o cancelamento com token inválido', async ({
@@ -173,6 +180,8 @@ test.describe('Cancelamento de compra - DELETE /carrinhos/cancelar-compra', () =
 
     const body = (await response.json()) as ErroCarrinho;
     expect(body.message).toBe(MENSAGEM_TOKEN_CARRINHO);
+
+    await validarContrato('auth.sem-token', response);
   });
 
   test('não deve repor o estoque duas vezes ao cancelar novamente @critico', async ({
@@ -193,6 +202,7 @@ test.describe('Cancelamento de compra - DELETE /carrinhos/cancelar-compra', () =
     expect(((await primeiro.json()) as MensagemCarrinho).message).toBe(
       MENSAGEM_CANCELAMENTO_SUCESSO,
     );
+    await validarContrato('carrinhos.cancelamento', primeiro);
     expect(await obterEstoque(request, produto.id)).toBe(estoqueInicial);
 
     const segundo = await cancelarCompra(request, conta.token);
@@ -200,6 +210,7 @@ test.describe('Cancelamento de compra - DELETE /carrinhos/cancelar-compra', () =
     expect(((await segundo.json()) as MensagemCarrinho).message).toBe(
       MENSAGEM_USUARIO_SEM_CARRINHO,
     );
+    await validarContrato('carrinhos.cancelamento', segundo);
 
     expect(await obterEstoque(request, produto.id)).toBe(estoqueInicial);
   });

@@ -4,6 +4,7 @@ import {
   validarListaUsuarios,
   validarUsuario,
 } from '../helpers/contrato';
+import { validarContrato } from '../helpers/contratos';
 import {
   criarUsuarioTeste,
   excluirUsuario,
@@ -40,6 +41,8 @@ test.describe('Consulta de usuários - GET /usuarios', () => {
 
     validarListaUsuarios(body);
     expect(body.quantidade).toBe(body.usuarios.length);
+
+    await validarContrato('usuarios.lista', response);
   });
 
   test('deve retornar somente o usuário esperado ao filtrar por id', async ({
@@ -231,6 +234,8 @@ test.describe('Consulta de usuários - GET /usuarios', () => {
     expect(body.email).toBe(usuario.email);
     expect(body.administrador).toBe(usuario.administrador);
     expect(body.password).toBe(usuario.password);
+
+    await validarContrato('usuarios.item', response);
   });
 
   test('deve retornar erro ao consultar usuário inexistente', async ({
@@ -246,6 +251,8 @@ test.describe('Consulta de usuários - GET /usuarios', () => {
     const body = (await response.json()) as MensagemResposta;
     expect(body.message).toBe('Usuário não encontrado');
     expect(body).not.toHaveProperty('nome');
+
+    await validarContrato('erros.mensagem', response);
   });
 
   test('deve retornar erro ao consultar usuário com id de formato inválido', async ({
@@ -258,5 +265,7 @@ test.describe('Consulta de usuários - GET /usuarios', () => {
 
     const body = (await response.json()) as ErroValidacao;
     expect(body.id).toBe('id deve ter exatamente 16 caracteres alfanuméricos');
+
+    await validarContrato('erros.id-invalido', response);
   });
 });

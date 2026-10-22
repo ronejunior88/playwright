@@ -35,12 +35,13 @@ Critérios de classificação:
 | Rotas que exigem administrador | 3 (`POST/PUT/DELETE /produtos`) |
 | Respostas HTTP documentadas | 45 (200 × 17, 201 × 5, 400 × 13, 401 × 7, 403 × 3) |
 | Requisitos rastreados | 99 |
-| Testes da suíte | 184 em 19 arquivos `*.spec.ts` |
+| Testes da suíte | 265 em 22 arquivos `*.spec.ts` |
 | Testes com `@critico` (risco alto) | 25 |
 | Testes com `@smoke` (subconjunto dos críticos) | 5 |
-| Grupos de regressão | smoke (5), críticos (25), completa (184) — ver `docs/regression-strategy.md` |
+| Grupos de regressão | smoke (5), críticos (25), completa (265) — ver `docs/regression-strategy.md` |
 | Testes de segurança (ETAPA 11) | 32 (12 do sanitizador + 7 de exposição/erros + 7 de entradas + 6 de auth/autorização) |
 | Testes de desempenho (ETAPA 12) | 4 (20 amostras de latência) — execução isolada, fora da regressão |
+| Testes de contrato (ETAPA 13) | 81 (35 do motor de schemas + 21 do registro + 25 de integração com a API) |
 | Testes adicionados na ETAPA 9 | 9 |
 | Cenários de validação de payload (erro por campo) | 57 (login 5, usuários 16, produtos 26, carrinhos 10) |
 
@@ -148,12 +149,12 @@ carrinho" contam como negativo.
 | --- | --- |
 | Data/hora (UTC) | 2026-10-22 |
 | Comando | `npm test` (`playwright test`, `workers: 1`) |
-| Aprovados | 184 |
+| Aprovados | 265 |
 | Falhas | 0 |
 | Ignorados | 0 |
 | Instáveis (flaky) | 0 |
-| Duração | 122 s (2,0 min) |
-| Evidência | `playwright-report/index.html` (reporter HTML) e `npx playwright test --list` → `Total: 184 tests in 19 files` |
+| Duração | 138 s (2,3 min) |
+| Evidência | `playwright-report/index.html` (reporter HTML) e `npx playwright test --list` → `Total: 265 tests in 22 files` |
 | Resíduos de dados de teste na API após a execução | 0 (varredura por prefixos `usuario-test`, `login-test`, `admin-etapa9-`, `Produto Playwright QA`, `Produto ETAPA9`) |
 
 Distribuição por arquivo (todos 100% aprovados):
@@ -176,10 +177,13 @@ Distribuição por arquivo (todos 100% aprovados):
 | `tests/carrinhos/carrinhos-integridade.spec.ts` | 4 |
 | `tests/seguranca/entrada-validacao.spec.ts` | 7 |
 | `tests/seguranca/exposicao-erros.spec.ts` | 7 |
+| `tests/contratos/schema.spec.ts` | 35 |
+| `tests/contratos/contratos.spec.ts` | 21 |
+| `tests/contratos/contratos-api.spec.ts` | 25 |
 | `tests/helpers/diagnostico.sanitizer.spec.ts` | 12 |
 | `tests/helpers/latencia.spec.ts` | 8 |
 | `tests/health.spec.ts` | 1 |
-| **Total** | **184** |
+| **Total** | **265** |
 
 ## 5. Lacunas por prioridade
 
@@ -212,19 +216,22 @@ Distribuição por arquivo (todos 100% aprovados):
 | Papel | Arquivos |
 | --- | --- |
 | Requisitos e cobertura | `docs/traceability-matrix.md`, `docs/coverage-analysis.md` |
-| Testes (19 arquivos) | `tests/health.spec.ts`, `tests/auth/login.spec.ts`, `tests/usuarios/*.spec.ts` (4), `tests/produtos/*.spec.ts` (4), `tests/carrinhos/*.spec.ts` (5), `tests/seguranca/*.spec.ts` (2), `tests/helpers/*.spec.ts` (2) |
-| Contratos centralizados | `tests/helpers/contrato.ts` |
+| Testes (22 arquivos) | `tests/health.spec.ts`, `tests/auth/login.spec.ts`, `tests/usuarios/*.spec.ts` (4), `tests/produtos/*.spec.ts` (4), `tests/carrinhos/*.spec.ts` (5), `tests/seguranca/*.spec.ts` (2), `tests/contratos/*.spec.ts` (3), `tests/helpers/*.spec.ts` (2) |
+| Contratos centralizados | `tests/helpers/contrato.ts` (asserções por campo) e `tests/helpers/contratos.ts` (adaptador do motor de contratos) |
+| Motor e registro de contratos | `contracts/schema.ts`, `contracts/contratos.ts`, `contracts/index.ts`, `docs/api-contracts.md` |
 | Demais helpers | `tests/helpers/{autenticacao,diagnostico,latencia,limpeza,produtos,usuarios,carrinhos}.ts` |
 | Desempenho (ETAPA 12) | `tests/performance/api-latency.spec.ts`, `playwright.latencia.config.ts`, `docs/performance-testing.md` |
-| Execução | `playwright.config.ts` (`workers: 1`), `package.json` (`test`, `test:paralelo`, `test:latencia`, `typecheck`) |
+| Execução | `playwright.config.ts` (`workers: 1`), `package.json` (`test`, `test:paralelo`, `test:latencia`, `test:contratos`, `test:contratos:api`, `typecheck`) |
 | Evidência | `playwright-report/index.html` e `performance-results/*.json` |
 
 ## 8. Comandos de verificação
 
 ```bash
-npm test              # suíte completa (184/184 na última execução)
-npm run test:latencia # avaliação de latência isolada (4 testes, 20 amostras)
-npm run typecheck     # tsc --noEmit sem erros
+npm test                    # suíte completa (265/265 na última execução)
+npm run test:contratos      # contratos locais: motor + registro (56 testes, sem rede)
+npm run test:contratos:api  # contratos contra a API real (25 testes)
+npm run test:latencia       # avaliação de latência isolada (4 testes, 20 amostras)
+npm run typecheck           # tsc --noEmit sem erros
 npx playwright test tests/usuarios/usuarios-get.spec.ts   # arquivo afetado isolado
 npx playwright test -g "chave não permitida|Authorization malformado"   # cenários novos isolados
 ```
@@ -250,3 +257,6 @@ ocorrências).
    avaliação diagnóstica de latência, sem SLA e sem gate), nem de segurança
    profunda (injeção, limites de tamanho de payload além dos campos
    documentados) nem de versionamento da API.
+5. Os contratos (ETAPA 13) verificam a **forma** das respostas, não a
+   semântica de negócio: regras como "1 carrinho por usuário" continuam
+   cobertas apenas pelos testes funcionais.

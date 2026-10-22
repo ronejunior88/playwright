@@ -21,7 +21,7 @@ por conveniência, e defeito de crítico não é negociado por prazo.
 | 1 | Sem erros de tipo | `tsc --noEmit` | `npm run typecheck` | 0 erros |
 | 2 | Contratos básicos OK | Grupo smoke | `npm run test:smoke` | 5/5 |
 | 3 | Risco alto protegido | Grupo críticos | `npm run test:criticos` | 25/25, **0 flaky** |
-| 4 | Regressão integral | Suíte completa | `npm test` | 184/184, 0 skipped |
+| 4 | Regressão integral | Suíte completa | `npm test` | 265/265, 0 skipped |
 | 5 | Estabilidade comprovada | Relatório estruturado | `npx playwright test --reporter=json` | `flaky: 0` |
 | 6 | Falhas explicadas | Anexo `requisicoes-api` + dica de diagnóstico | relatório HTML | toda falha classificada (seção 3) |
 
@@ -31,6 +31,11 @@ gate exige todos. Critério 6 é o que separa REPROVADO de INCONCLUSIVO.
 > O gate cobre a **regressão funcional**. A avaliação de latência
 > (`npm run test:latencia`) é diagnóstica, manual e **não faz parte** do gate:
 > não aprova, não reprova e não bloqueia merge/release.
+>
+> A checagem local de contratos (`npm run test:contratos`, sem rede) roda
+> **antes** do gate no CI: ela detecta um contrato quebrado no registro sem
+> esperar pela API pública. Uma falha ali é defeito do projeto (não do
+> ambiente) e reprova o pipeline.
 
 ## 3. Como classificar uma falha
 
@@ -42,17 +47,18 @@ gate exige todos. Critério 6 é o que separa REPROVADO de INCONCLUSIVO.
 | Falha só em `--workers=2` | **Ambiente** (taxa por IP) | Executar com `workers: 1`, o modo suportado |
 
 Regra fundamental: **um teste `@critico` falho por defeito reproduzível do
-produto reprova o quality gate** — mesmo que os outros 183 testes passem.
+produto reprova o quality gate** — mesmo que os outros 264 testes passem.
 
 ## 4. Checklist de execução
 
 ```bash
-npm ci                 # dependências limpas
-npm run typecheck      # critério 1
-npm run test:smoke     # critério 2 (~6 s)
-npm run test:criticos  # critério 3 (~37 s)
-npm test               # critério 4 (~122 s)
-npm run report         # critérios 5 e 6, se houver falha
+npm ci                  # dependências limpas
+npm run typecheck       # critério 1
+npm run test:contratos  # contratos locais, sem rede (ETAPA 13)
+npm run test:smoke      # critério 2 (~6 s)
+npm run test:criticos   # critério 3 (~37 s)
+npm test                # critério 4 (~138 s)
+npm run report          # critérios 5 e 6, se houver falha
 ```
 
 Em CI o mesmo percurso roda no workflow `.github/workflows/playwright.yml`
@@ -75,7 +81,8 @@ de aprovar.
 | 1 | `npm run typecheck` | 0 erros | 2026-10-22 |
 | 2 | `npm run test:smoke` | 5/5 aprovados | 2026-10-22 |
 | 3 | `npm run test:criticos` | 25/25 aprovados, 0 flaky | 2026-10-22 |
-| 4 | `npm test` | 184/184 aprovados | 2026-10-22 |
+| 4 | `npm test` | 265/265 aprovados | 2026-10-22 |
 | 5 | relatório estruturado | `flaky: 0`, `skipped: 0` | 2026-10-22 |
+| — | `npm run test:contratos` | 56/56 aprovados (sem rede) | 2026-10-22 |
 
 **Estado: APROVADO.**

@@ -6,7 +6,7 @@ implementado e as regras de evolução da priorização.
 
 ## 1. Objetivo
 
-A suíte tem **184 testes** e leva ~2 min contra uma API pública compartilhada.
+A suíte tem **265 testes** e leva ~2,3 min contra uma API pública compartilhada.
 Não faz sentido executar tudo sempre: para feedback rápido em pull requests e
 para decisão de release, os cenários foram classificados por risco e agrupados
 em níveis de regressão com comandos reais e medidos.
@@ -25,7 +25,7 @@ probabilidade de o cenário representar um caminho real de uso.
 
 Os 25 cenários de **risco alto** recebem a tag `@critico` no título; os 5 que
 também validam o contrato mínimo de um ponto de entrada da API recebem
-`@smoke` (subconjunto dos críticos). Os demais 119 permanecem sem tag e só
+`@smoke` (subconjunto dos críticos). Os demais 240 permanecem sem tag e só
 entram na regressão completa.
 
 ## 3. Grupos de execução
@@ -34,7 +34,8 @@ entram na regressão completa.
 | --- | --- | --- | --- | --- |
 | **Smoke** | `npm run test:smoke` (`--grep @smoke`) | 5 | ~6 s | Sinal imediato de que a API responde, o login funciona e os contratos básicos de listagem não mudaram |
 | **Críticos** | `npm run test:criticos` (`--grep @critico`) | 25 | ~37 s | Gate de regressão de risco alto: permissões, estoque, carrinhos e persistência de CRUD |
-| **Regressão completa** | `npm test` | 184 | ~122 s | Validação integral antes de merge/release; engloba os dois grupos acima |
+| **Regressão completa** | `npm test` | 265 | ~138 s | Validação integral antes de merge/release; engloba os dois grupos acima |
+| **Contratos (local)** | `npm run test:contratos` | 56 | ~1 s | Motor de schemas e consistência do registro — **sem rede**, roda antes de qualquer chamada à API |
 
 Todas as execuções usam `workers: 1` (a API pública limita a taxa por IP;
 ver `README.md`).
@@ -42,6 +43,12 @@ ver `README.md`).
 > A avaliação de latência (`npm run test:latencia`) **não** faz parte de
 > nenhum desses grupos: ela roda em config próprio, é manual e não bloqueia a
 > regressão funcional. Ver `docs/performance-testing.md`.
+>
+> O grupo **Contratos (local)** também não é um grupo de regressão funcional:
+> ele valida o motor e o registro de contratos sem tocar a rede, e por isso
+> pode rodar em qualquer ambiente (inclusive sem acesso à API). Os contratos
+> são verificados contra a API real dentro da regressão completa. Ver
+> `docs/api-contracts.md`.
 
 ## 4. Como a priorização é implementada
 
@@ -96,7 +103,9 @@ Verificado na suíte antes de fixar os grupos:
 | --- | --- | --- | --- |
 | Smoke | `npm run test:smoke` | 2026-10-22 | 5/5 aprovados |
 | Críticos | `npm run test:criticos` | 2026-10-22 | 25/25 aprovados |
-| Regressão completa | `npm test` | 2026-10-22 | 184/184 aprovados, ~122 s |
+| Regressão completa | `npm test` | 2026-10-22 | 265/265 aprovados, ~138 s |
+| Contratos (local, sem rede) | `npm run test:contratos` | 2026-10-22 | 56/56 aprovados, ~1 s |
+| Contratos (API real) | `npm run test:contratos:api` | 2026-10-22 | 25/25 aprovados, ~18 s |
 | Latência (manual, isolada) | `npm run test:latencia` | 2026-10-22 | 4/4 aprovados, 20 amostras, ~5 s |
 
 Evidências: relatório HTML (`playwright-report/index.html`) de cada execução e,

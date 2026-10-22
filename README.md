@@ -18,13 +18,14 @@ Não é necessário baixar navegadores: a suíte é **somente de API** (usa o
 `APIRequestContext` do Playwright).
 
 ## Execução
-
 ```bash
 npm test              # executa toda a suíte
 npm run test:api      # alias para toda a suíte (100% API)
 npm run test:smoke    # apenas os 5 testes de smoke (@smoke)
 npm run test:criticos # apenas os 25 testes de risco alto (@critico)
 npm run test:latencia # avaliação isolada de latência da API (GET, 20 amostras)
+npm run test:contratos      # contratos: motor + registro (56 testes, sem rede)
+npm run test:contratos:api  # contratos: integração com a API (25 testes)
 npm run typecheck     # checagem de tipos (tsc --noEmit)
 npm run report        # abre o relatório HTML da última execução
 ```
@@ -41,12 +42,14 @@ npx playwright test -g "login"             # por título
 
 | Script               | Descrição                                                    |
 | -------------------- | ------------------------------------------------------------ |
-| `npm test`           | Regressão completa: 184 testes (1 worker).                   |
+| `npm test`           | Regressão completa: 265 testes (1 worker).                   |
 | `npm run test:api`   | Alias de `npm test` (a suíte inteira é API).                 |
 | `npm run test:smoke` | Smoke: 5 testes (`--grep @smoke`), ~6 s.                     |
 | `npm run test:criticos` | Risco alto: 25 testes (`--grep @critico`), ~37 s.         |
 | `npm run test:paralelo` | Executa com 2 workers (mais rápido, pode receber **429**). |
 | `npm run test:latencia` | Latência da API: config e suíte isoladas, ~5 s.            |
+| `npm run test:contratos` | Contratos: motor e registro, 56 testes **sem rede**, ~1 s. |
+| `npm run test:contratos:api` | Contratos contra a API real, 25 testes, ~18 s.        |
 | `npm run typecheck`  | Verifica os tipos com TypeScript.                            |
 | `npm run report`     | Abre o relatório HTML.                                       |
 
@@ -56,13 +59,19 @@ os critérios de aprovação (quality gate) estão em
 [`docs/quality-gate.md`](docs/quality-gate.md); o escopo dos testes de
 segurança (autenticação, autorização, entradas, exposição de dados e
 sanitização de logs) está em
-[`docs/security-testing.md`](docs/security-testing.md); e a avaliação de
+[`docs/security-testing.md`](docs/security-testing.md); a avaliação de
 latência da API está em
-[`docs/performance-testing.md`](docs/performance-testing.md).
+[`docs/performance-testing.md`](docs/performance-testing.md); e o catálogo de
+contratos da API está em
+[`docs/api-contracts.md`](docs/api-contracts.md).
 
 ## Estrutura
 
 ```
+contracts/                       # motor e registro de contratos (sem dependências)
+  schema.ts                      # validador de schemas e classificação de divergências
+  contratos.ts                   # registro dos 25 contratos da API (fonte da verdade)
+  index.ts                       # API pública: buscar/verificar/listar contratos
 tests/
   fixtures.ts                 # test/expect estendidos (evidência automática de API)
   health.spec.ts              # health check da API
@@ -73,6 +82,10 @@ tests/
   produtos/                   # GET/POST/PUT/DELETE /produtos
   usuarios/                   # GET/POST/PUT/DELETE /usuarios
   carrinhos/                  # GET/POST e conclusão/cancelamento de compra
+  contratos/                 # testes dos contratos da API
+    schema.spec.ts           # motor de schemas (35 testes, sem rede)
+    contratos.spec.ts        # consistência do registro (21 testes, sem rede)
+    contratos-api.spec.ts    # contratos contra a API real (25 testes)
   performance/                # avaliação isolada de latência (fora da regressão)
     api-latency.spec.ts
   helpers/                    # utilitários reutilizados pelos testes
@@ -81,9 +94,10 @@ tests/
     produtos.ts
     carrinhos.ts
     contrato.ts               # validadores de contrato centralizados
+    contratos.ts              # adaptador Playwright do motor de contratos
     diagnostico.ts            # sanitização e classificação de status para evidências
     diagnostico.sanitizer.spec.ts  # testes unitários do sanitizador
-    latencia.ts               # medição, classificação de falhas e estatística
+    latencia.ts                # medição, classificação de falhas e estatística
     latencia.spec.ts          # testes unitários do cálculo estatístico (sem rede)
     limpeza.ts                # exclusão com proteção contra 429 (1 tentativa extra)
 docs/
@@ -93,8 +107,32 @@ docs/
   quality-gate.md             # critérios de aprovação da suíte
   security-testing.md         # escopo, achados e sanitização (ETAPA 11)
   performance-testing.md      # avaliação de latência da API (ETAPA 12)
+  api-contracts.md            # catálogo de contratos e divergências (ETAPA 13)
 playwright.latencia.config.ts # config isolado da suíte de desempenho
 ```
+
+## Contratos da API
+
+A pasta `contracts/` mantém a **fonte da verdade estrutural** da API: o que
+cada endpoint deve devolver (status, `content-type` e forma do corpo). O
+motor (`contracts/schema.ts`) não tem dependência externa e classifica cada
+divergência como **incompatível** (quebra de contrato) ou **compatível** (campo
+novo, que não reprova a suíte).
+
+- `npm run test:contratos` roda a suíte local do motor e do registro
+  (**56 testes, sem rede**) — é a checagem que detecta mudança de contrato em
+  tempo de build.
+- `npm run test:contratos:api` roda a integração com a API real
+  (**25 testes**), confirmando cada contrato registrado contra a API pública.
+- Os contratos também são verificados **dentro dos testes funcionais**: cada
+  cenário relevante chama `validarContrato('id.do.contrato', response)`, de
+  modo que uma mudança de formato na API quebra a suíte mesmo que as
+  asserções por campo continuem passando.
+
+As divergências conhecidas entre documentação, contrato e ambiente (D1–D8)
+estão registradas em [`docs/api-contracts.md`](docs/api-contracts.md) — elas
+são **documentadas**, não "corrigidas" na suíte.
+
 
 ## Avaliação de latência
 
@@ -123,7 +161,9 @@ manual — e não no CI — estão em
 
 Os testes validam **status HTTP, corpo e mensagens** de sucesso e de erro, além
 de conferir a persistência das mudanças com consultas de verificação. As
-validações de contrato ficam centralizadas em `tests/helpers/contrato.ts`.
+validações de contrato ficam centralizadas em `tests/helpers/contrato.ts` e,
+a partir da ETAPA 13, a **forma** da resposta é verificada contra o registro de
+contratos (`contracts/`) em `tests/helpers/contratos.ts`.
 
 O rastreio completo (requisito → cenário → arquivo → resultado) e a análise de
 lacunas por risco estão em [`docs/traceability-matrix.md`](docs/traceability-matrix.md)
@@ -157,7 +197,7 @@ e [`docs/coverage-analysis.md`](docs/coverage-analysis.md).
   - `--workers=2` (~20 req/s): o `GET /usuarios` do próprio *health check*
     (apenas leitura) já retorna **HTTP 429** — é limite de taxa, não contenção
     de dados.
-  - `--workers=1` (~10 req/s): suíte inteira **184 passed / 0 failed**.
+  - `--workers=1` (~10 req/s): suíte inteira **265 passed / 0 failed**.
 - Por isso o padrão é `workers: 1` (local e CI). `npm run test:paralelo`
   mantém o modo rápido disponível para quando o ambiente permitir.
 - Se uma execução receber **429**, trate como **condição do ambiente**: limpe os
@@ -261,10 +301,12 @@ O workflow `.github/workflows/playwright.yml` roda a cada `push` e
 
 1. instala dependências com `npm ci` (cache do npm);
 2. roda `npm run typecheck`;
-3. roda `npm run test:smoke` (5 testes);
-4. roda `npm run test:criticos` (25 testes);
-5. roda a suíte completa com `npx playwright test`;
-6. publica os artefatos (`playwright-report/` e `test-results/results.json`)
+3. roda `npm run test:contratos` (56 testes locais do motor e do registro —
+   **sem rede**, falha rápido se um contrato for quebrado);
+4. roda `npm run test:smoke` (5 testes);
+5. roda `npm run test:criticos` (25 testes);
+6. roda a suíte completa com `npx playwright test`;
+7. publica os artefatos (`playwright-report/` e `test-results/results.json`)
    com `if: always()`, mesmo quando os testes falham.
 
 O job mantém o status de falha real (sem `continue-on-error`), usa apenas

@@ -1,38 +1,33 @@
-import { type APIRequestContext } from '@playwright/test';
 import { expect, test } from '../fixtures';
-import { validarContrato } from '../helpers/contratos';
+import { bearer } from '../helpers/autenticacao';
 import {
-  cancelarCompraSeguro,
   CASOS_PAYLOAD_CARRINHO_INVALIDO,
   criarCarrinhoTeste,
-  criarUsuarioAutenticado,
   listarCarrinhos,
   MENSAGEM_ESTOQUE_INSUFICIENTE,
   MENSAGEM_PRODUTO_DUPLICADO,
-  MENSAGEM_PRODUTO_INEXISTENTE,
   MENSAGEM_SEGUNDO_CARRINHO,
   MENSAGEM_TOKEN_CARRINHO,
   obterCarrinho,
   obterEstoque,
   type ErroCarrinho,
-  type MensagemCarrinho,
+  type UsuarioAutenticado,
 } from '../helpers/carrinhos';
 import {
-  bearer,
-  criarProdutoTeste,
-  excluirProduto,
+  type ContextoCarrinhos,
+  criarContextoCarrinhos,
+} from '../helpers/cenario-carrinhos';
+import { validarContrato } from '../helpers/contratos';
+import {
+  MENSAGEM_PRODUTO_NAO_ENCONTRADO,
   type ProdutoCriado,
 } from '../helpers/produtos';
 import {
-  excluirUsuario,
-  gerarIdUnico,
-  type UsuarioCriado,
-} from '../helpers/usuarios';
-
-interface ContaAutenticada {
-  usuario: UsuarioCriado;
-  token: string;
-}
+  lerJson,
+  MENSAGEM_CADASTRO_SUCESSO,
+  type MensagemResposta,
+} from '../helpers/resposta';
+import { gerarIdUnico } from '../helpers/usuarios';
 
 test.describe('Criação de carrinhos - POST /carrinhos', () => {
   // Serial: a API permite apenas 1 carrinho ativo por usuário e o afterEach
@@ -40,67 +35,29 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
   // cancelaria o carrinho de outro. A serialização é o que garante o isolamento.
   test.describe.configure({ mode: 'serial' });
 
-  let admin: UsuarioCriado;
-  let tokenAdmin: string;
-  const contasCriadas: ContaAutenticada[] = [];
-  let contasDoTeste: ContaAutenticada[] = [];
-  const produtosCriados: ProdutoCriado[] = [];
+  let contexto: ContextoCarrinhos;
 
   test.beforeAll(async ({ request }) => {
-    const conta = await criarUsuarioAutenticado(request, 'true');
-    admin = conta.usuario;
-    tokenAdmin = conta.token;
+    contexto = await criarContextoCarrinhos(request);
   });
 
   test.beforeEach(() => {
-    contasDoTeste = [];
+    contexto.iniciarTeste();
   });
 
   test.afterEach(async ({ request }) => {
-    for (const conta of contasDoTeste) {
-      await cancelarCompraSeguro(request, conta.token);
-    }
+    await contexto.cancelarContasDoTeste(request);
   });
 
   test.afterAll(async ({ request }) => {
-    for (const conta of contasCriadas) {
-      await cancelarCompraSeguro(request, conta.token);
-    }
-    for (const produto of produtosCriados) {
-      await excluirProduto(request, tokenAdmin, produto.id);
-    }
-    for (const conta of contasCriadas) {
-      await excluirUsuario(request, conta.usuario.id);
-    }
-    await excluirUsuario(request, admin.id);
+    await contexto.limpar(request);
   });
-
-  async function novaConta(
-    request: APIRequestContext,
-  ): Promise<ContaAutenticada> {
-    const conta = await criarUsuarioAutenticado(request, 'false');
-    contasCriadas.push(conta);
-    contasDoTeste.push(conta);
-    return conta;
-  }
-
-  async function novoProduto(
-    request: APIRequestContext,
-    opcoes: { preco: number; estoque: number },
-  ): Promise<ProdutoCriado> {
-    const produto = await criarProdutoTeste(request, tokenAdmin, {
-      preco: opcoes.preco,
-      quantidade: opcoes.estoque,
-    });
-    produtosCriados.push(produto);
-    return produto;
-  }
 
   test('deve criar um carrinho e reduzir o estoque exatamente pela quantidade @critico', async ({
     request,
   }) => {
-    const conta = await novaConta(request);
-    const produto = await novoProduto(request, { preco: 111, estoque: 10 });
+    const conta = await contexto.novaConta(request);
+    const produto = await contexto.novoProduto(request, { preco: 111, quantidade: 10 });
     const estoqueInicial = await obterEstoque(request, produto.id);
 
     const carrinhoId = await criarCarrinhoTeste(request, conta.token, [
@@ -123,20 +80,15 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
   test('deve rejeitar a criação sem token de autorização', async ({
     request,
   }) => {
-    const conta = await novaConta(request);
-    const produto = await novoProduto(request, { preco: 120, estoque: 5 });
+    const conta = await contexto.novaConta(request);
+    const produto = await contexto.novoProduto(request, { preco: 120, quantidade: 5 });
     const estoqueInicial = await obterEstoque(request, produto.id);
 
     const response = await request.post('/carrinhos', {
       data: { produtos: [{ idProduto: produto.id, quantidade: 1 }] },
     });
 
-    expect(response.status()).toBe(401);
-    expect(response.headers()['content-type'] ?? '').toContain(
-      'application/json',
-    );
-
-    const body = (await response.json()) as ErroCarrinho;
+    const body = await lerJson<ErroCarrinho>(response, 401);
     expect(body.message).toBe(MENSAGEM_TOKEN_CARRINHO);
 
     await validarContrato('auth.sem-token', response);
@@ -147,8 +99,8 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
   });
 
   test('deve rejeitar a criação com token inválido', async ({ request }) => {
-    const conta = await novaConta(request);
-    const produto = await novoProduto(request, { preco: 130, estoque: 5 });
+    const conta = await contexto.novaConta(request);
+    const produto = await contexto.novoProduto(request, { preco: 130, quantidade: 5 });
     const estoqueInicial = await obterEstoque(request, produto.id);
 
     const response = await request.post('/carrinhos', {
@@ -156,12 +108,7 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
       headers: { Authorization: bearer('token-invalido') },
     });
 
-    expect(response.status()).toBe(401);
-    expect(response.headers()['content-type'] ?? '').toContain(
-      'application/json',
-    );
-
-    const body = (await response.json()) as ErroCarrinho;
+    const body = await lerJson<ErroCarrinho>(response, 401);
     expect(body.message).toBe(MENSAGEM_TOKEN_CARRINHO);
 
     await validarContrato('auth.sem-token', response);
@@ -174,8 +121,8 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
   test('deve rejeitar a criação com Authorization malformado (token sem prefixo Bearer)', async ({
     request,
   }) => {
-    const conta = await novaConta(request);
-    const produto = await novoProduto(request, { preco: 131, estoque: 5 });
+    const conta = await contexto.novaConta(request);
+    const produto = await contexto.novoProduto(request, { preco: 131, quantidade: 5 });
     const estoqueInicial = await obterEstoque(request, produto.id);
 
     const response = await request.post('/carrinhos', {
@@ -183,12 +130,7 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
       headers: { Authorization: conta.token },
     });
 
-    expect(response.status()).toBe(401);
-    expect(response.headers()['content-type'] ?? '').toContain(
-      'application/json',
-    );
-
-    const body = (await response.json()) as ErroCarrinho;
+    const body = await lerJson<ErroCarrinho>(response, 401);
     expect(body.message).toBe(MENSAGEM_TOKEN_CARRINHO);
 
     await validarContrato('auth.sem-token', response);
@@ -201,10 +143,8 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
   test('deve permitir a criação de carrinho para administrador (rota não exige admin)', async ({
     request,
   }) => {
-    const conta = await criarUsuarioAutenticado(request, 'true');
-    contasCriadas.push(conta);
-    contasDoTeste.push(conta);
-    const produto = await novoProduto(request, { preco: 135, estoque: 5 });
+    const conta = await contexto.novaConta(request, 'true');
+    const produto = await contexto.novoProduto(request, { preco: 135, quantidade: 5 });
 
     const carrinhoId = await criarCarrinhoTeste(request, conta.token, [
       { idProduto: produto.id, quantidade: 1 },
@@ -218,9 +158,9 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
   test('deve rejeitar a criação de um segundo carrinho para o mesmo usuário @critico', async ({
     request,
   }) => {
-    const conta = await novaConta(request);
-    const produto = await novoProduto(request, { preco: 140, estoque: 10 });
-    const produto2 = await novoProduto(request, { preco: 150, estoque: 10 });
+    const conta = await contexto.novaConta(request);
+    const produto = await contexto.novoProduto(request, { preco: 140, quantidade: 10 });
+    const produto2 = await contexto.novoProduto(request, { preco: 150, quantidade: 10 });
 
     const carrinhoId = await criarCarrinhoTeste(request, conta.token, [
       { idProduto: produto.id, quantidade: 1 },
@@ -232,12 +172,7 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
       headers: { Authorization: bearer(conta.token) },
     });
 
-    expect(response.status()).toBe(400);
-    expect(response.headers()['content-type'] ?? '').toContain(
-      'application/json',
-    );
-
-    const body = (await response.json()) as ErroCarrinho;
+    const body = await lerJson<ErroCarrinho>(response, 400);
     expect(body.message).toBe(MENSAGEM_SEGUNDO_CARRINHO);
 
     await validarContrato('erros.mensagem', response);
@@ -253,8 +188,8 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
   test('deve rejeitar produto duplicado no mesmo carrinho', async ({
     request,
   }) => {
-    const conta = await novaConta(request);
-    const produto = await novoProduto(request, { preco: 160, estoque: 10 });
+    const conta = await contexto.novaConta(request);
+    const produto = await contexto.novoProduto(request, { preco: 160, quantidade: 10 });
     const estoqueInicial = await obterEstoque(request, produto.id);
 
     const response = await request.post('/carrinhos', {
@@ -267,12 +202,7 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
       headers: { Authorization: bearer(conta.token) },
     });
 
-    expect(response.status()).toBe(400);
-    expect(response.headers()['content-type'] ?? '').toContain(
-      'application/json',
-    );
-
-    const body = (await response.json()) as ErroCarrinho;
+    const body = await lerJson<ErroCarrinho>(response, 400);
     expect(body.message).toBe(MENSAGEM_PRODUTO_DUPLICADO);
     expect(body.idProdutosDuplicados).toContain(produto.id);
 
@@ -284,7 +214,7 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
   });
 
   test('deve rejeitar produto inexistente', async ({ request }) => {
-    const conta = await novaConta(request);
+    const conta = await contexto.novaConta(request);
     const idInexistente = gerarIdUnico();
 
     const response = await request.post('/carrinhos', {
@@ -292,13 +222,8 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
       headers: { Authorization: bearer(conta.token) },
     });
 
-    expect(response.status()).toBe(400);
-    expect(response.headers()['content-type'] ?? '').toContain(
-      'application/json',
-    );
-
-    const body = (await response.json()) as ErroCarrinho;
-    expect(body.message).toBe(MENSAGEM_PRODUTO_INEXISTENTE);
+    const body = await lerJson<ErroCarrinho>(response, 400);
+    expect(body.message).toBe(MENSAGEM_PRODUTO_NAO_ENCONTRADO);
     expect(body.item?.idProduto).toBe(idInexistente);
     expect(body.item?.quantidade).toBe(1);
     expect(body.item?.index).toBe(0);
@@ -312,8 +237,8 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
   test('deve rejeitar quantidade superior ao estoque disponível @critico', async ({
     request,
   }) => {
-    const conta = await novaConta(request);
-    const produto = await novoProduto(request, { preco: 170, estoque: 3 });
+    const conta = await contexto.novaConta(request);
+    const produto = await contexto.novoProduto(request, { preco: 170, quantidade: 3 });
     const estoqueInicial = await obterEstoque(request, produto.id);
 
     const response = await request.post('/carrinhos', {
@@ -323,12 +248,7 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
       headers: { Authorization: bearer(conta.token) },
     });
 
-    expect(response.status()).toBe(400);
-    expect(response.headers()['content-type'] ?? '').toContain(
-      'application/json',
-    );
-
-    const body = (await response.json()) as ErroCarrinho;
+    const body = await lerJson<ErroCarrinho>(response, 400);
     expect(body.message).toBe(MENSAGEM_ESTOQUE_INSUFICIENTE);
     expect(body.item?.idProduto).toBe(produto.id);
     expect(body.item?.quantidadeEstoque).toBe(estoqueInicial);
@@ -342,27 +262,27 @@ test.describe('Criação de carrinhos - POST /carrinhos', () => {
 });
 
 test.describe('Criação de carrinhos - payloads inválidos - POST /carrinhos', () => {
-  let admin: UsuarioCriado;
-  let tokenAdmin: string;
-  let conta: ContaAutenticada;
+  let contexto: ContextoCarrinhos;
+  let conta: UsuarioAutenticado;
   let produto: ProdutoCriado;
 
   test.beforeAll(async ({ request }) => {
-    const adminConta = await criarUsuarioAutenticado(request, 'true');
-    admin = adminConta.usuario;
-    tokenAdmin = adminConta.token;
-    conta = await criarUsuarioAutenticado(request, 'false');
-    produto = await criarProdutoTeste(request, tokenAdmin, {
+    contexto = await criarContextoCarrinhos(request);
+    conta = await contexto.novaConta(request);
+    produto = await contexto.novoProduto(request, {
       preco: 200,
       quantidade: 20,
     });
   });
 
+  test.beforeEach(() => {
+    // A conta e o produto são compartilhados por todos os casos: não há
+    // carrinho ativo para cancelar entre um caso e outro.
+    contexto.iniciarTeste();
+  });
+
   test.afterAll(async ({ request }) => {
-    await cancelarCompraSeguro(request, conta.token);
-    await excluirProduto(request, tokenAdmin, produto.id);
-    await excluirUsuario(request, conta.usuario.id);
-    await excluirUsuario(request, admin.id);
+    await contexto.limpar(request);
   });
 
   for (const caso of CASOS_PAYLOAD_CARRINHO_INVALIDO) {
@@ -376,12 +296,7 @@ test.describe('Criação de carrinhos - payloads inválidos - POST /carrinhos', 
         headers: { Authorization: bearer(conta.token) },
       });
 
-      expect(response.status()).toBe(400);
-      expect(response.headers()['content-type'] ?? '').toContain(
-        'application/json',
-      );
-
-      const body = (await response.json()) as ErroCarrinho;
+      const body = await lerJson<ErroCarrinho>(response, 400);
       expect(body).toMatchObject(caso.corpoEsperado);
       expect(body).not.toHaveProperty('_id');
 
@@ -404,36 +319,33 @@ test.describe('Criação de carrinhos - payloads inválidos - POST /carrinhos', 
 });
 
 test.describe('Criação de carrinhos - corpo de sucesso - POST /carrinhos', () => {
+  let contexto: ContextoCarrinhos;
+
+  test.beforeAll(async ({ request }) => {
+    contexto = await criarContextoCarrinhos(request);
+  });
+
+  test.afterAll(async ({ request }) => {
+    await contexto.limpar(request);
+  });
+
   test('deve retornar mensagem e _id no cadastro', async ({ request }) => {
-    const adminConta = await criarUsuarioAutenticado(request, 'true');
-    const conta = await criarUsuarioAutenticado(request, 'false');
-    const produto = await criarProdutoTeste(request, adminConta.token, {
+    const conta = await contexto.novaConta(request);
+    const produto = await contexto.novoProduto(request, {
       preco: 210,
       quantidade: 4,
     });
 
-    try {
-      const response = await request.post('/carrinhos', {
-        data: { produtos: [{ idProduto: produto.id, quantidade: 1 }] },
-        headers: { Authorization: bearer(conta.token) },
-      });
+    const response = await request.post('/carrinhos', {
+      data: { produtos: [{ idProduto: produto.id, quantidade: 1 }] },
+      headers: { Authorization: bearer(conta.token) },
+    });
 
-      expect(response.status()).toBe(201);
-      expect(response.headers()['content-type'] ?? '').toContain(
-        'application/json',
-      );
+    const body = await lerJson<MensagemResposta>(response, 201);
+    expect(body.message).toBe(MENSAGEM_CADASTRO_SUCESSO);
+    expect(typeof body._id).toBe('string');
+    expect(body._id!.length).toBeGreaterThan(0);
 
-      const body = (await response.json()) as MensagemCarrinho;
-      expect(body.message).toBe('Cadastro realizado com sucesso');
-      expect(typeof body._id).toBe('string');
-      expect(body._id!.length).toBeGreaterThan(0);
-
-      await validarContrato('carrinhos.criacao', response);
-    } finally {
-      await cancelarCompraSeguro(request, conta.token);
-      await excluirProduto(request, adminConta.token, produto.id);
-      await excluirUsuario(request, conta.usuario.id);
-      await excluirUsuario(request, adminConta.usuario.id);
-    }
+    await validarContrato('carrinhos.criacao', response);
   });
 });

@@ -7,29 +7,24 @@ import {
 } from '../helpers/contrato';
 import { validarContrato } from '../helpers/contratos';
 import {
-  cancelarCompraSeguro,
   criarCarrinhoTeste,
-  criarUsuarioAutenticado,
   listarCarrinhos,
   MENSAGEM_CARRINHO_NAO_ENCONTRADO,
-  MENSAGEM_ID_INVALIDO_CARRINHO,
   obterCarrinho,
   obterEstoque,
   type CarrinhoApi,
   type ErroCarrinho,
   type ItemCarrinho,
   type ListaCarrinhos,
+  type UsuarioAutenticado,
 } from '../helpers/carrinhos';
 import {
-  criarProdutoTeste,
-  excluirProduto,
-  type ProdutoCriado,
-} from '../helpers/produtos';
-import {
-  excluirUsuario,
-  gerarIdUnico,
-  type UsuarioCriado,
-} from '../helpers/usuarios';
+  type ContextoCarrinhos,
+  criarContextoCarrinhos,
+} from '../helpers/cenario-carrinhos';
+import { type ProdutoCriado } from '../helpers/produtos';
+import { lerJson, MENSAGEM_ID_INVALIDO } from '../helpers/resposta';
+import { gerarIdUnico } from '../helpers/usuarios';
 
 test.describe('Consulta de carrinhos - GET /carrinhos', () => {
   // Serial: a API permite apenas 1 carrinho ativo por usuário e o afterEach
@@ -37,65 +32,39 @@ test.describe('Consulta de carrinhos - GET /carrinhos', () => {
   // cancelaria o carrinho de outro. A serialização é o que garante o isolamento.
   test.describe.configure({ mode: 'serial' });
 
-  interface ContaAutenticada {
-    usuario: UsuarioCriado;
-    token: string;
-  }
-
-  interface CenarioCarrinho extends ContaAutenticada {
+  interface CenarioCarrinho extends UsuarioAutenticado {
     produto: ProdutoCriado;
     item: ItemCarrinho;
     carrinhoId: string;
   }
 
-  let admin: UsuarioCriado;
-  let tokenAdmin: string;
-  const contasCriadas: ContaAutenticada[] = [];
-  let contasDoTeste: ContaAutenticada[] = [];
-  const produtosCriados: ProdutoCriado[] = [];
+  let contexto: ContextoCarrinhos;
 
   test.beforeAll(async ({ request }) => {
-    const conta = await criarUsuarioAutenticado(request, 'true');
-    admin = conta.usuario;
-    tokenAdmin = conta.token;
+    contexto = await criarContextoCarrinhos(request);
   });
 
   test.beforeEach(() => {
-    contasDoTeste = [];
+    contexto.iniciarTeste();
   });
 
   test.afterEach(async ({ request }) => {
-    for (const conta of contasDoTeste) {
-      await cancelarCompraSeguro(request, conta.token);
-    }
+    await contexto.cancelarContasDoTeste(request);
   });
 
   test.afterAll(async ({ request }) => {
-    for (const conta of contasCriadas) {
-      await cancelarCompraSeguro(request, conta.token);
-    }
-    for (const produto of produtosCriados) {
-      await excluirProduto(request, tokenAdmin, produto.id);
-    }
-    for (const conta of contasCriadas) {
-      await excluirUsuario(request, conta.usuario.id);
-    }
-    await excluirUsuario(request, admin.id);
+    await contexto.limpar(request);
   });
 
   async function prepararCarrinho(
     request: APIRequestContext,
-    opcoes: { preco: number; estoque: number; compra: number },
+    opcoes: { preco: number; quantidade: number; compra: number },
   ): Promise<CenarioCarrinho> {
-    const conta = await criarUsuarioAutenticado(request, 'false');
-    const produto = await criarProdutoTeste(request, tokenAdmin, {
+    const conta = await contexto.novaConta(request);
+    const produto = await contexto.novoProduto(request, {
       preco: opcoes.preco,
-      quantidade: opcoes.estoque,
+      quantidade: opcoes.quantidade,
     });
-
-    contasCriadas.push(conta);
-    contasDoTeste.push(conta);
-    produtosCriados.push(produto);
 
     const item: ItemCarrinho = {
       idProduto: produto.id,
@@ -109,10 +78,7 @@ test.describe('Consulta de carrinhos - GET /carrinhos', () => {
   test('deve listar carrinhos com estrutura válida', async ({ request }) => {
     const response = await request.get('/carrinhos');
 
-    expect(response.status()).toBe(200);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const lista = (await response.json()) as ListaCarrinhos;
+    const lista = await lerJson<ListaCarrinhos>(response, 200);
 
     expect(typeof lista.quantidade).toBe('number');
     expect(Array.isArray(lista.carrinhos)).toBe(true);
@@ -126,7 +92,7 @@ test.describe('Consulta de carrinhos - GET /carrinhos', () => {
   test('deve filtrar carrinhos por _id', async ({ request }) => {
     const cenario = await prepararCarrinho(request, {
       preco: 123,
-      estoque: 10,
+      quantidade: 10,
       compra: 2,
     });
 
@@ -140,7 +106,7 @@ test.describe('Consulta de carrinhos - GET /carrinhos', () => {
   test('deve filtrar carrinhos por idUsuario', async ({ request }) => {
     const cenario = await prepararCarrinho(request, {
       preco: 456,
-      estoque: 10,
+      quantidade: 10,
       compra: 1,
     });
 
@@ -159,7 +125,7 @@ test.describe('Consulta de carrinhos - GET /carrinhos', () => {
     const compra = 3;
     const cenario = await prepararCarrinho(request, {
       preco,
-      estoque: 10,
+      quantidade: 10,
       compra,
     });
 
@@ -181,7 +147,7 @@ test.describe('Consulta de carrinhos - GET /carrinhos', () => {
     const quantidadeTotal = 7;
     const cenario = await prepararCarrinho(request, {
       preco: 31,
-      estoque: 20,
+      quantidade: 20,
       compra: quantidadeTotal,
     });
 
@@ -205,7 +171,7 @@ test.describe('Consulta de carrinhos - GET /carrinhos', () => {
     const compra = 4;
     const cenario = await prepararCarrinho(request, {
       preco,
-      estoque: 10,
+      quantidade: 10,
       compra,
     });
 
@@ -241,12 +207,7 @@ test.describe('Consulta de carrinhos - GET /carrinhos', () => {
       params: { chave_nao_documentada: '1' },
     });
 
-    expect(response.status()).toBe(400);
-    expect(response.headers()['content-type'] ?? '').toContain(
-      'application/json',
-    );
-
-    const body = (await response.json()) as Record<string, string>;
+    const body = await lerJson<Record<string, string>>(response, 400);
     validarErroDeCampos(body);
     expect(body.chave_nao_documentada).toBe(
       'chave_nao_documentada não é permitido',
@@ -262,14 +223,12 @@ test.describe('Consulta de carrinhos - GET /carrinhos', () => {
   }) => {
     const cenario = await prepararCarrinho(request, {
       preco: 250,
-      estoque: 10,
+      quantidade: 10,
       compra: 4,
     });
 
     const response = await request.get(`/carrinhos/${cenario.carrinhoId}`);
-    expect(response.status()).toBe(200);
-
-    const carrinho = (await response.json()) as CarrinhoApi;
+    const carrinho = await lerJson<CarrinhoApi>(response, 200);
 
     validarCarrinho(carrinho);
     expect(carrinho._id).toBe(cenario.carrinhoId);
@@ -291,12 +250,7 @@ test.describe('Consulta de carrinhos - GET /carrinhos', () => {
   }) => {
     const response = await request.get(`/carrinhos/${gerarIdUnico()}`);
 
-    expect(response.status()).toBe(400);
-    expect(response.headers()['content-type'] ?? '').toContain(
-      'application/json',
-    );
-
-    const body = (await response.json()) as ErroCarrinho;
+    const body = await lerJson<ErroCarrinho>(response, 400);
     expect(body.message).toBe(MENSAGEM_CARRINHO_NAO_ENCONTRADO);
     expect(body).not.toHaveProperty('carrinhos');
 
@@ -308,13 +262,8 @@ test.describe('Consulta de carrinhos - GET /carrinhos', () => {
   }) => {
     const response = await request.get('/carrinhos/id-invalido');
 
-    expect(response.status()).toBe(400);
-    expect(response.headers()['content-type'] ?? '').toContain(
-      'application/json',
-    );
-
-    const body = (await response.json()) as ErroCarrinho;
-    expect(body.id).toBe(MENSAGEM_ID_INVALIDO_CARRINHO);
+    const body = await lerJson<ErroCarrinho>(response, 400);
+    expect(body.id).toBe(MENSAGEM_ID_INVALIDO);
 
     await validarContrato('erros.id-invalido', response);
   });
@@ -326,7 +275,7 @@ test.describe('Consulta de carrinhos - GET /carrinhos', () => {
     const compra = 5;
     const cenario = await prepararCarrinho(request, {
       preco: 77,
-      estoque: estoqueInicial,
+      quantidade: estoqueInicial,
       compra,
     });
 

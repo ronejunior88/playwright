@@ -1,5 +1,12 @@
 import { expect, type APIRequestContext } from '@playwright/test';
+import { bearer } from './autenticacao';
+import { gerarSufixo } from './aleatorio';
 import { executarLimpeza } from './limpeza';
+import {
+  lerJson,
+  MENSAGEM_CADASTRO_SUCESSO,
+  type MensagemResposta,
+} from './resposta';
 import { criarUsuarioTeste, type UsuarioCriado } from './usuarios';
 
 export interface DadosProduto {
@@ -22,28 +29,16 @@ export interface ListaProdutos {
   produtos: ProdutoApi[];
 }
 
-export interface MensagemResposta {
-  message?: string;
-  _id?: string;
-}
+/** Mensagem devolvida quando o produto não existe. */
+export const MENSAGEM_PRODUTO_NAO_ENCONTRADO = 'Produto não encontrado';
 
-export interface ErroValidacaoProduto {
-  nome?: string;
-  preco?: string;
-  descricao?: string;
-  quantidade?: string;
-  id?: string;
-  message?: string;
-}
+/** Mensagem devolvida quando já existe produto com o nome informado. */
+export const MENSAGEM_NOME_PRODUTO_EM_USO = 'Já existe produto com esse nome';
 
 export interface CasoPayloadInvalido {
   rotulo: string;
   montar: () => Record<string, unknown>;
   corpoEsperado: Record<string, string>;
-}
-
-function gerarSufixo(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export function gerarNomeProdutoUnico(prefixo: string): string {
@@ -57,16 +52,6 @@ export function gerarPrecoUnico(): number {
 export function gerarQuantidadeUnica(): number {
   return Math.floor(Math.random() * 100);
 }
-
-export function bearer(token: string): string {
-  return `Bearer ${token}`;
-}
-
-export const MENSAGEM_TOKEN_INVALIDO =
-  'Token de acesso ausente, inválido, expirado ou usuário do token não existe mais';
-
-export const MENSAGEM_ROTA_ADMIN =
-  'Rota exclusiva para administradores';
 
 export const CASOS_PAYLOAD_INVALIDO: CasoPayloadInvalido[] = [
   {
@@ -223,11 +208,8 @@ export async function criarProdutoTeste(
     headers: { Authorization: bearer(token) },
   });
 
-  expect(response.status()).toBe(201);
-  expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-  const body = (await response.json()) as MensagemResposta;
-  expect(body.message).toBe('Cadastro realizado com sucesso');
+  const body = await lerJson<MensagemResposta>(response, 201, 'criação de produto');
+  expect(body.message).toBe(MENSAGEM_CADASTRO_SUCESSO);
   expect(body._id, 'criação de produto deve retornar um _id').toBeTruthy();
 
   return { id: body._id!, ...payload };

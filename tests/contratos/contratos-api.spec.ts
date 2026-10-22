@@ -1,8 +1,13 @@
 import { test } from '../fixtures';
-import { validarContrato } from '../helpers/contratos';
-import { fazerLogin } from '../helpers/autenticacao';
+import { bearer, fazerLogin } from '../helpers/autenticacao';
 import {
-  bearer,
+  cancelarCompraSeguro,
+  criarCarrinhoTeste,
+  criarUsuarioAutenticado,
+} from '../helpers/carrinhos';
+import { validarContrato } from '../helpers/contratos';
+import { lerJson, type MensagemResposta } from '../helpers/resposta';
+import {
   criarProdutoTeste,
   excluirProduto,
   gerarNomeProdutoUnico,
@@ -14,13 +19,7 @@ import {
   excluirUsuario,
   gerarEmailUnico,
   gerarNomeUnico,
-  type UsuarioCriado,
 } from '../helpers/usuarios';
-import {
-  cancelarCompraSeguro,
-  criarCarrinhoTeste,
-  criarUsuarioAutenticado,
-} from '../helpers/carrinhos';
 
 /**
  * Testes de contrato contra a API real.
@@ -32,21 +31,6 @@ import {
  *
  * Os dados criados aqui são sintéticos e removidos ao final de cada teste.
  */
-
-interface Administrador {
-  usuario: UsuarioCriado;
-  token: string;
-}
-
-/** Cria um administrador e mantém a sessão válida durante o teste. */
-async function criarAdministrador(
-  request: Parameters<typeof criarUsuarioTeste>[0],
-): Promise<Administrador> {
-  const usuario = await criarUsuarioTeste(request, { administrador: 'true' });
-  const token = await fazerLogin(request, usuario.email, usuario.password);
-
-  return { usuario, token };
-}
 
 function produtoSintetico() {
   return {
@@ -115,8 +99,8 @@ test.describe('Contratos da API — usuários', () => {
 
     await validarContrato('usuarios.criacao', resposta);
 
-    const corpo = (await resposta.json()) as { _id: string };
-    await excluirUsuario(request, corpo._id);
+    const corpo = await lerJson<MensagemResposta>(resposta, 201);
+    await excluirUsuario(request, corpo._id!);
   });
 
   test('consulta de usuário cumpre o contrato', async ({ request }) => {
@@ -177,14 +161,14 @@ test.describe('Contratos da API — usuários', () => {
     };
 
     const primeiro = await request.post('/usuarios', { data: dados });
-    const corpo = (await primeiro.json()) as { _id: string };
+    const corpo = await lerJson<MensagemResposta>(primeiro, 201);
 
     try {
       const resposta = await request.post('/usuarios', { data: dados });
 
       await validarContrato('usuarios.email-duplicado', resposta);
     } finally {
-      await excluirUsuario(request, corpo._id);
+      await excluirUsuario(request, corpo._id!);
     }
   });
 
@@ -238,7 +222,7 @@ test.describe('Contratos da API — produtos', () => {
   });
 
   test('criação com administrador cumpre o contrato', async ({ request }) => {
-    const admin = await criarAdministrador(request);
+    const admin = await criarUsuarioAutenticado(request, 'true');
 
     try {
       const resposta = await request.post('/produtos', {
@@ -255,7 +239,7 @@ test.describe('Contratos da API — produtos', () => {
   test('nome duplicado cumpre o contrato de erro de negócio', async ({
     request,
   }) => {
-    const admin = await criarAdministrador(request);
+    const admin = await criarUsuarioAutenticado(request, 'true');
 
     try {
       const produto = await criarProdutoTeste(request, admin.token);
@@ -280,7 +264,8 @@ test.describe('Contratos da API — produtos', () => {
     }
   });
 
-  test('consulta de produto cumpre o contrato', async ({ request }) => {    const admin = await criarAdministrador(request);
+  test('consulta de produto cumpre o contrato', async ({ request }) => {
+    const admin = await criarUsuarioAutenticado(request, 'true');
 
     try {
       const produto = await criarProdutoTeste(request, admin.token);
@@ -298,7 +283,7 @@ test.describe('Contratos da API — produtos', () => {
   });
 
   test('atualização de produto cumpre o contrato', async ({ request }) => {
-    const admin = await criarAdministrador(request);
+    const admin = await criarUsuarioAutenticado(request, 'true');
 
     try {
       const produto = await criarProdutoTeste(request, admin.token);
@@ -324,7 +309,7 @@ test.describe('Contratos da API — produtos', () => {
   });
 
   test('exclusão de produto cumpre o contrato', async ({ request }) => {
-    const admin = await criarAdministrador(request);
+    const admin = await criarUsuarioAutenticado(request, 'true');
 
     try {
       const produto = await criarProdutoTeste(request, admin.token);
@@ -348,7 +333,7 @@ test.describe('Contratos da API — carrinhos', () => {
   });
 
   test('criação de carrinho cumpre o contrato', async ({ request }) => {
-    const admin = await criarAdministrador(request);
+    const admin = await criarUsuarioAutenticado(request, 'true');
     const { usuario, token } = await criarUsuarioAutenticado(request, 'false');
     let produtoId = '';
 
@@ -375,7 +360,7 @@ test.describe('Contratos da API — carrinhos', () => {
   });
 
   test('consulta de carrinho cumpre o contrato', async ({ request }) => {
-    const admin = await criarAdministrador(request);
+    const admin = await criarUsuarioAutenticado(request, 'true');
     const { usuario, token } = await criarUsuarioAutenticado(request, 'false');
     let produtoId = '';
 
@@ -403,7 +388,7 @@ test.describe('Contratos da API — carrinhos', () => {
   });
 
   test('conclusão de compra cumpre o contrato', async ({ request }) => {
-    const admin = await criarAdministrador(request);
+    const admin = await criarUsuarioAutenticado(request, 'true');
     const { usuario, token } = await criarUsuarioAutenticado(request, 'false');
     let produtoId = '';
 
@@ -433,7 +418,7 @@ test.describe('Contratos da API — carrinhos', () => {
   });
 
   test('cancelamento de compra cumpre o contrato', async ({ request }) => {
-    const admin = await criarAdministrador(request);
+    const admin = await criarUsuarioAutenticado(request, 'true');
     const { usuario, token } = await criarUsuarioAutenticado(request, 'false');
     let produtoId = '';
 

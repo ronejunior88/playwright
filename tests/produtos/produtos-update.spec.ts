@@ -1,19 +1,28 @@
 import { expect, test } from '../fixtures';
-import { validarContrato } from '../helpers/contratos';
-import { fazerLogin } from '../helpers/autenticacao';
 import {
   bearer,
+  fazerLogin,
+  MENSAGEM_ROTA_ADMIN,
+  MENSAGEM_TOKEN_INVALIDO,
+} from '../helpers/autenticacao';
+import { validarContrato } from '../helpers/contratos';
+import {
   CASOS_PAYLOAD_INVALIDO,
   criarProdutoTeste,
   criarUsuarioProdutoTeste,
   excluirProduto,
-  MENSAGEM_ROTA_ADMIN,
-  MENSAGEM_TOKEN_INVALIDO,
-  type ErroValidacaoProduto,
-  type MensagemResposta,
+  MENSAGEM_NOME_PRODUTO_EM_USO,
+  MENSAGEM_PRODUTO_NAO_ENCONTRADO,
   type ProdutoApi,
   type ProdutoCriado,
 } from '../helpers/produtos';
+import {
+  type ErroValidacao,
+  lerJson,
+  MENSAGEM_ALTERADO_SUCESSO,
+  MENSAGEM_CADASTRO_SUCESSO,
+  type MensagemResposta,
+} from '../helpers/resposta';
 import {
   excluirUsuario,
   gerarIdUnico,
@@ -74,18 +83,13 @@ test.describe('Atualização de produtos - PUT /produtos/{_id}', () => {
       headers: { Authorization: bearer(tokenAdmin) },
     });
 
-    expect(response.status()).toBe(200);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as MensagemResposta;
-    expect(body.message).toBe('Registro alterado com sucesso');
+    const body = await lerJson<MensagemResposta>(response, 200);
+    expect(body.message).toBe(MENSAGEM_ALTERADO_SUCESSO);
 
     await validarContrato('produtos.atualizacao', response);
 
     const consulta = await request.get(`/produtos/${produto.id}`);
-    expect(consulta.status()).toBe(200);
-
-    const corpo = (await consulta.json()) as ProdutoApi;
+    const corpo = await lerJson<ProdutoApi>(consulta, 200);
     expect(corpo._id).toBe(produto.id);
     expect(corpo.nome).toBe(dadosAtualizados.nome);
     expect(corpo.preco).toBe(dadosAtualizados.preco);
@@ -112,17 +116,13 @@ test.describe('Atualização de produtos - PUT /produtos/{_id}', () => {
       headers: { Authorization: bearer(tokenAdmin) },
     });
 
-    expect(response.status()).toBe(400);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as MensagemResposta;
-    expect(body.message).toBe('Já existe produto com esse nome');
+    const body = await lerJson<MensagemResposta>(response, 400);
+    expect(body.message).toBe(MENSAGEM_NOME_PRODUTO_EM_USO);
 
     await validarContrato('produtos.nome-duplicado', response);
 
     const consultaB = await request.get(`/produtos/${produtoB.id}`);
-    expect(consultaB.status()).toBe(200);
-    const corpoB = (await consultaB.json()) as ProdutoApi;
+    const corpoB = await lerJson<ProdutoApi>(consultaB, 200);
     expect(corpoB.nome).toBe(produtoB.nome);
     expect(corpoB.preco).toBe(produtoB.preco);
     expect(corpoB.descricao).toBe(produtoB.descricao);
@@ -144,17 +144,13 @@ test.describe('Atualização de produtos - PUT /produtos/{_id}', () => {
       },
     });
 
-    expect(response.status()).toBe(401);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as MensagemResposta;
+    const body = await lerJson<MensagemResposta>(response, 401);
     expect(body.message).toBe(MENSAGEM_TOKEN_INVALIDO);
 
     await validarContrato('auth.sem-token', response);
 
     const consulta = await request.get(`/produtos/${produto.id}`);
-    expect(consulta.status()).toBe(200);
-    const corpo = (await consulta.json()) as ProdutoApi;
+    const corpo = await lerJson<ProdutoApi>(consulta, 200);
     expect(corpo.nome).toBe(produto.nome);
     expect(corpo.preco).toBe(produto.preco);
   });
@@ -175,17 +171,13 @@ test.describe('Atualização de produtos - PUT /produtos/{_id}', () => {
       headers: { Authorization: bearer('token-invalido') },
     });
 
-    expect(response.status()).toBe(401);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as MensagemResposta;
+    const body = await lerJson<MensagemResposta>(response, 401);
     expect(body.message).toBe(MENSAGEM_TOKEN_INVALIDO);
 
     await validarContrato('auth.sem-token', response);
 
     const consulta = await request.get(`/produtos/${produto.id}`);
-    expect(consulta.status()).toBe(200);
-    const corpo = (await consulta.json()) as ProdutoApi;
+    const corpo = await lerJson<ProdutoApi>(consulta, 200);
     expect(corpo.nome).toBe(produto.nome);
     expect(corpo.preco).toBe(produto.preco);
   });
@@ -206,17 +198,13 @@ test.describe('Atualização de produtos - PUT /produtos/{_id}', () => {
       headers: { Authorization: bearer(tokenComum) },
     });
 
-    expect(response.status()).toBe(403);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as MensagemResposta;
+    const body = await lerJson<MensagemResposta>(response, 403);
     expect(body.message).toBe(MENSAGEM_ROTA_ADMIN);
 
     await validarContrato('auth.nao-admin', response);
 
     const consulta = await request.get(`/produtos/${produto.id}`);
-    expect(consulta.status()).toBe(200);
-    const corpo = (await consulta.json()) as ProdutoApi;
+    const corpo = await lerJson<ProdutoApi>(consulta, 200);
     expect(corpo.nome).toBe(produto.nome);
     expect(corpo.preco).toBe(produto.preco);
   });
@@ -241,11 +229,8 @@ test.describe('Atualização de produtos - PUT /produtos/{_id}', () => {
       headers: { Authorization: bearer(tokenAdmin) },
     });
 
-    expect(response.status()).toBe(201);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as MensagemResposta;
-    expect(body.message).toBe('Cadastro realizado com sucesso');
+    const body = await lerJson<MensagemResposta>(response, 201);
+    expect(body.message).toBe(MENSAGEM_CADASTRO_SUCESSO);
     expect(typeof body._id).toBe('string');
     expect(body._id!.length).toBeGreaterThan(0);
 
@@ -256,9 +241,7 @@ test.describe('Atualização de produtos - PUT /produtos/{_id}', () => {
     idsCriados.push(body._id!);
 
     const consulta = await request.get(`/produtos/${body._id}`);
-    expect(consulta.status()).toBe(200);
-
-    const corpo = (await consulta.json()) as ProdutoApi;
+    const corpo = await lerJson<ProdutoApi>(consulta, 200);
     expect(corpo._id).toBe(body._id);
     expect(corpo.nome).toBe(dados.nome);
     expect(corpo.preco).toBe(dados.preco);
@@ -266,9 +249,8 @@ test.describe('Atualização de produtos - PUT /produtos/{_id}', () => {
     expect(corpo.quantidade).toBe(dados.quantidade);
 
     const consultaIdUrl = await request.get(`/produtos/${id}`);
-    expect(consultaIdUrl.status()).toBe(400);
-    const corpoIdUrl = (await consultaIdUrl.json()) as MensagemResposta;
-    expect(corpoIdUrl.message).toBe('Produto não encontrado');
+    const corpoIdUrl = await lerJson<MensagemResposta>(consultaIdUrl, 400);
+    expect(corpoIdUrl.message).toBe(MENSAGEM_PRODUTO_NAO_ENCONTRADO);
   });
 
   for (const caso of CASOS_PAYLOAD_INVALIDO) {
@@ -287,18 +269,14 @@ test.describe('Atualização de produtos - PUT /produtos/{_id}', () => {
         headers: { Authorization: bearer(tokenAdmin) },
       });
 
-      expect(response.status()).toBe(400);
-      expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-      const body = (await response.json()) as ErroValidacaoProduto;
+      const body = await lerJson<ErroValidacao>(response, 400);
       expect(body).toMatchObject(caso.corpoEsperado);
       expect(body).not.toHaveProperty('_id');
 
       await validarContrato('erros.validacao-campos', response);
 
       const consulta = await request.get(`/produtos/${produtoBase.id}`);
-      expect(consulta.status()).toBe(200);
-      const corpo = (await consulta.json()) as ProdutoApi;
+      const corpo = await lerJson<ProdutoApi>(consulta, 200);
       expect(corpo.nome).toBe(dadosBase.nome);
       expect(corpo.preco).toBe(dadosBase.preco);
       expect(corpo.descricao).toBe(dadosBase.descricao);

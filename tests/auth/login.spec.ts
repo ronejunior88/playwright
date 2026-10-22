@@ -1,18 +1,17 @@
 import { expect, test } from '../fixtures';
+import {
+  MENSAGEM_CREDENCIAIS_INVALIDAS,
+  MENSAGEM_LOGIN_SUCESSO,
+  type RespostaLogin,
+} from '../helpers/autenticacao';
 import { validarContrato } from '../helpers/contratos';
+import { lerJson } from '../helpers/resposta';
 import {
   criarUsuarioTeste,
   excluirUsuario,
   gerarEmailUnico,
   type UsuarioCriado,
 } from '../helpers/usuarios';
-
-interface RespostaLogin {
-  message?: string;
-  authorization?: string;
-  email?: string;
-  password?: string;
-}
 
 test.describe('Login da API ServeRest', () => {
   let usuarioTeste: UsuarioCriado;
@@ -39,16 +38,11 @@ test.describe('Login da API ServeRest', () => {
       },
     });
 
-    expect(response.status()).toBe(200);
-
-    const contentType = response.headers()['content-type'] ?? '';
-    expect(contentType).toContain('application/json');
-
-    const body = (await response.json()) as RespostaLogin;
+    const body = await lerJson<RespostaLogin>(response, 200);
 
     expect(body).toHaveProperty('message');
     expect(typeof body.message).toBe('string');
-    expect(body.message).toBe('Login realizado com sucesso');
+    expect(body.message).toBe(MENSAGEM_LOGIN_SUCESSO);
 
     expect(body).toHaveProperty('authorization');
     expect(typeof body.authorization).toBe('string');
@@ -71,16 +65,11 @@ test.describe('Login da API ServeRest', () => {
       },
     });
 
-    expect(response.status()).toBe(401);
-
-    const contentType = response.headers()['content-type'] ?? '';
-    expect(contentType).toContain('application/json');
-
-    const body = (await response.json()) as RespostaLogin;
+    const body = await lerJson<RespostaLogin>(response, 401);
 
     expect(body).toHaveProperty('message');
     expect(typeof body.message).toBe('string');
-    expect(body.message).toBe('Email e/ou senha inválidos');
+    expect(body.message).toBe(MENSAGEM_CREDENCIAIS_INVALIDAS);
     expect(body).not.toHaveProperty('authorization');
 
     await validarContrato('login.credenciais-invalidas', response);
@@ -94,16 +83,11 @@ test.describe('Login da API ServeRest', () => {
       },
     });
 
-    expect(response.status()).toBe(401);
-
-    const contentType = response.headers()['content-type'] ?? '';
-    expect(contentType).toContain('application/json');
-
-    const body = (await response.json()) as RespostaLogin;
+    const body = await lerJson<RespostaLogin>(response, 401);
 
     expect(body).toHaveProperty('message');
     expect(typeof body.message).toBe('string');
-    expect(body.message).toBe('Email e/ou senha inválidos');
+    expect(body.message).toBe(MENSAGEM_CREDENCIAIS_INVALIDAS);
     expect(body).not.toHaveProperty('authorization');
 
     await validarContrato('login.credenciais-invalidas', response);
@@ -112,12 +96,7 @@ test.describe('Login da API ServeRest', () => {
   test('deve retornar erro ao enviar payload vazio', async ({ request }) => {
     const response = await request.post('/login', { data: {} });
 
-    expect(response.status()).toBe(400);
-
-    const contentType = response.headers()['content-type'] ?? '';
-    expect(contentType).toContain('application/json');
-
-    const body = (await response.json()) as RespostaLogin;
+    const body = await lerJson<RespostaLogin>(response, 400);
 
     expect(body).toHaveProperty('email');
     expect(body.email).toBe('email é obrigatório');
@@ -135,12 +114,7 @@ test.describe('Login da API ServeRest', () => {
       },
     });
 
-    expect(response.status()).toBe(400);
-
-    const contentType = response.headers()['content-type'] ?? '';
-    expect(contentType).toContain('application/json');
-
-    const body = (await response.json()) as RespostaLogin;
+    const body = await lerJson<RespostaLogin>(response, 400);
 
     expect(body).toHaveProperty('email');
     expect(body.email).toBe('email é obrigatório');
@@ -158,12 +132,7 @@ test.describe('Login da API ServeRest', () => {
       },
     });
 
-    expect(response.status()).toBe(400);
-
-    const contentType = response.headers()['content-type'] ?? '';
-    expect(contentType).toContain('application/json');
-
-    const body = (await response.json()) as RespostaLogin;
+    const body = await lerJson<RespostaLogin>(response, 400);
 
     expect(body).toHaveProperty('password');
     expect(body.password).toBe('password é obrigatório');
@@ -182,12 +151,7 @@ test.describe('Login da API ServeRest', () => {
       },
     });
 
-    expect(response.status()).toBe(400);
-
-    const contentType = response.headers()['content-type'] ?? '';
-    expect(contentType).toContain('application/json');
-
-    const body = (await response.json()) as RespostaLogin;
+    const body = await lerJson<RespostaLogin>(response, 400);
 
     expect(body).toHaveProperty('email');
     expect(body.email).toBe('email deve ser um email válido');
@@ -206,12 +170,7 @@ test.describe('Login da API ServeRest', () => {
       },
     });
 
-    expect(response.status()).toBe(400);
-
-    const contentType = response.headers()['content-type'] ?? '';
-    expect(contentType).toContain('application/json');
-
-    const body = (await response.json()) as RespostaLogin;
+    const body = await lerJson<RespostaLogin>(response, 400);
 
     expect(body).toHaveProperty('email');
     expect(body.email).toBe('email não pode ficar em branco');
@@ -232,12 +191,7 @@ test.describe('Login da API ServeRest', () => {
       },
     });
 
-    expect(response.status()).toBe(400);
-
-    const contentType = response.headers()['content-type'] ?? '';
-    expect(contentType).toContain('application/json');
-
-    const body = (await response.json()) as RespostaLogin;
+    const body = await lerJson<RespostaLogin>(response, 400);
     expect(body).toHaveProperty('email');
     expect(body.email).toBe('email não pode ficar em branco');
     expect(body).not.toHaveProperty('authorization');
@@ -255,15 +209,7 @@ test.describe('Login da API ServeRest', () => {
       },
     });
 
-    expect(response.status()).toBe(400);
-
-    const contentType = response.headers()['content-type'] ?? '';
-    expect(contentType).toContain('application/json');
-
-    const body = (await response.json()) as RespostaLogin & {
-      email?: string;
-      password?: string;
-    };
+    const body = await lerJson<RespostaLogin>(response, 400);
     expect(body).not.toHaveProperty('authorization');
 
     // Comportamento observado: rejeição por campo (`email deve ser uma string`).

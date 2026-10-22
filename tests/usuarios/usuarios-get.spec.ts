@@ -1,5 +1,11 @@
 import { expect, test } from '../fixtures';
 import {
+  lerJson,
+  MENSAGEM_ID_INVALIDO,
+  type ErroValidacao,
+  type MensagemResposta,
+} from '../helpers/resposta';
+import {
   validarErroDeCampos,
   validarListaUsuarios,
   validarUsuario,
@@ -10,9 +16,8 @@ import {
   excluirUsuario,
   gerarIdUnico,
   gerarNomeUnico,
-  type ErroValidacao,
+  MENSAGEM_USUARIO_NAO_ENCONTRADO,
   type ListaUsuarios,
-  type MensagemResposta,
   type UsuarioApi,
 } from '../helpers/usuarios';
 
@@ -28,10 +33,7 @@ test.describe('Consulta de usuários - GET /usuarios', () => {
   test('deve listar usuários com estrutura válida @smoke @critico', async ({ request }) => {
     const response = await request.get('/usuarios');
 
-    expect(response.status()).toBe(200);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as ListaUsuarios;
+    const body = await lerJson<ListaUsuarios>(response, 200);
 
     expect(body).toHaveProperty('quantidade');
     expect(typeof body.quantidade).toBe('number');
@@ -55,10 +57,7 @@ test.describe('Consulta de usuários - GET /usuarios', () => {
       params: { _id: usuario.id },
     });
 
-    expect(response.status()).toBe(200);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as ListaUsuarios;
+    const body = await lerJson<ListaUsuarios>(response, 200);
     expect(body.quantidade).toBe(1);
     expect(body.usuarios).toHaveLength(1);
     expect(body.usuarios[0]._id).toBe(usuario.id);
@@ -72,10 +71,7 @@ test.describe('Consulta de usuários - GET /usuarios', () => {
       params: { nome: usuario.nome },
     });
 
-    expect(response.status()).toBe(200);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as ListaUsuarios;
+    const body = await lerJson<ListaUsuarios>(response, 200);
     expect(body.quantidade).toBeGreaterThanOrEqual(1);
 
     for (const usuarioEncontrado of body.usuarios) {
@@ -96,10 +92,7 @@ test.describe('Consulta de usuários - GET /usuarios', () => {
       params: { email: usuario.email },
     });
 
-    expect(response.status()).toBe(200);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as ListaUsuarios;
+    const body = await lerJson<ListaUsuarios>(response, 200);
     expect(body.quantidade).toBe(1);
     expect(body.usuarios).toHaveLength(1);
     expect(body.usuarios[0]._id).toBe(usuario.id);
@@ -114,10 +107,7 @@ test.describe('Consulta de usuários - GET /usuarios', () => {
       params: { administrador: 'true' },
     });
 
-    expect(response.status()).toBe(200);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as ListaUsuarios;
+    const body = await lerJson<ListaUsuarios>(response, 200);
     expect(body.quantidade).toBeGreaterThanOrEqual(1);
 
     for (const usuarioEncontrado of body.usuarios) {
@@ -139,10 +129,7 @@ test.describe('Consulta de usuários - GET /usuarios', () => {
       params: { password: senhaExclusiva },
     });
 
-    expect(response.status()).toBe(200);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as ListaUsuarios;
+    const body = await lerJson<ListaUsuarios>(response, 200);
     validarListaUsuarios(body);
 
     for (const usuarioEncontrado of body.usuarios) {
@@ -156,9 +143,7 @@ test.describe('Consulta de usuários - GET /usuarios', () => {
       params: { password: 'senha-que-nao-existe-9f3a1' },
     });
 
-    expect(semCorrespondencia.status()).toBe(200);
-
-    const corpoVazio = (await semCorrespondencia.json()) as ListaUsuarios;
+    const corpoVazio = await lerJson<ListaUsuarios>(semCorrespondencia, 200);
     validarListaUsuarios(corpoVazio);
     expect(corpoVazio.quantidade).toBe(0);
     expect(corpoVazio.usuarios).toHaveLength(0);
@@ -177,9 +162,7 @@ test.describe('Consulta de usuários - GET /usuarios', () => {
       params: { nome: usuario.nome, administrador: 'true' },
     });
 
-    expect(response.status()).toBe(200);
-
-    const body = (await response.json()) as ListaUsuarios;
+    const body = await lerJson<ListaUsuarios>(response, 200);
     validarListaUsuarios(body);
 
     for (const encontrado of body.usuarios) {
@@ -191,9 +174,7 @@ test.describe('Consulta de usuários - GET /usuarios', () => {
       params: { nome: usuario.nome, administrador: 'false' },
     });
 
-    expect(conflitante.status()).toBe(200);
-
-    const corpoConflitante = (await conflitante.json()) as ListaUsuarios;
+    const corpoConflitante = await lerJson<ListaUsuarios>(conflitante, 200);
     validarListaUsuarios(corpoConflitante);
     expect(corpoConflitante.quantidade).toBe(0);
     expect(corpoConflitante.usuarios).toHaveLength(0);
@@ -206,10 +187,7 @@ test.describe('Consulta de usuários - GET /usuarios', () => {
       params: { chave_nao_documentada: '1' },
     });
 
-    expect(response.status()).toBe(400);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as Record<string, string>;
+    const body = await lerJson<Record<string, string>>(response, 400);
     validarErroDeCampos(body);
     expect(body.chave_nao_documentada).toBe(
       'chave_nao_documentada não é permitido',
@@ -224,10 +202,7 @@ test.describe('Consulta de usuários - GET /usuarios', () => {
 
     const response = await request.get(`/usuarios/${usuario.id}`);
 
-    expect(response.status()).toBe(200);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as UsuarioApi;
+    const body = await lerJson<UsuarioApi>(response, 200);
     validarUsuario(body);
     expect(body._id).toBe(usuario.id);
     expect(body.nome).toBe(usuario.nome);
@@ -245,11 +220,8 @@ test.describe('Consulta de usuários - GET /usuarios', () => {
 
     const response = await request.get(`/usuarios/${id}`);
 
-    expect(response.status()).toBe(400);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as MensagemResposta;
-    expect(body.message).toBe('Usuário não encontrado');
+    const body = await lerJson<MensagemResposta>(response, 400);
+    expect(body.message).toBe(MENSAGEM_USUARIO_NAO_ENCONTRADO);
     expect(body).not.toHaveProperty('nome');
 
     await validarContrato('erros.mensagem', response);
@@ -260,11 +232,8 @@ test.describe('Consulta de usuários - GET /usuarios', () => {
   }) => {
     const response = await request.get('/usuarios/id-invalido');
 
-    expect(response.status()).toBe(400);
-    expect(response.headers()['content-type'] ?? '').toContain('application/json');
-
-    const body = (await response.json()) as ErroValidacao;
-    expect(body.id).toBe('id deve ter exatamente 16 caracteres alfanuméricos');
+    const body = await lerJson<ErroValidacao>(response, 400);
+    expect(body.id).toBe(MENSAGEM_ID_INVALIDO);
 
     await validarContrato('erros.id-invalido', response);
   });

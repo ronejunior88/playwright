@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { APIRequestContext } from '@playwright/test';
 import { expect, test } from '../fixtures';
+import { lerJson } from '../helpers/resposta';
 import {
   validarListaCarrinhos,
   validarListaProdutos,
@@ -125,10 +126,9 @@ test.describe('Avaliacao de latencia da API', () => {
     // Preparação fora da janela de medição: a listagem usada para obter o id
     // não é registrada como amostra de latência.
     const preparacao = await request.get('/produtos');
-    expect(preparacao.status()).toBe(200);
-    const lista = (await preparacao.json()) as {
+    const lista = await lerJson<{
       produtos: Array<{ _id?: string }>;
-    };
+    }>(preparacao, 200);
     const id = lista.produtos[0]?._id;
 
     expect(

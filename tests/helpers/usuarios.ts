@@ -1,5 +1,11 @@
 import { expect, type APIRequestContext } from '@playwright/test';
+import { gerarSufixo } from './aleatorio';
 import { executarLimpeza } from './limpeza';
+import {
+  lerJson,
+  MENSAGEM_CADASTRO_SUCESSO,
+  type MensagemResposta,
+} from './resposta';
 
 export interface DadosUsuario {
   nome: string;
@@ -21,23 +27,11 @@ export interface ListaUsuarios {
   usuarios: UsuarioApi[];
 }
 
-export interface MensagemResposta {
-  message?: string;
-  _id?: string;
-}
+/** Mensagem devolvida quando o usuário não existe. */
+export const MENSAGEM_USUARIO_NAO_ENCONTRADO = 'Usuário não encontrado';
 
-export interface ErroValidacao {
-  nome?: string;
-  email?: string;
-  password?: string;
-  administrador?: string;
-  id?: string;
-  message?: string;
-}
-
-function gerarSufixo(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
+/** Mensagem devolvida quando o e-mail informado já está em uso. */
+export const MENSAGEM_EMAIL_EM_USO = 'Este email já está sendo usado';
 
 export function gerarEmailUnico(prefixo: string): string {
   return `${prefixo}-${gerarSufixo()}@example.com`;
@@ -69,9 +63,8 @@ export async function criarUsuarioTeste(
 
   const response = await request.post('/usuarios', { data: payload });
 
-  expect(response.status()).toBe(201);
-
-  const body = (await response.json()) as MensagemResposta;
+  const body = await lerJson<MensagemResposta>(response, 201, 'criação de usuário');
+  expect(body.message).toBe(MENSAGEM_CADASTRO_SUCESSO);
   expect(body._id, 'criação de usuário deve retornar um _id').toBeTruthy();
 
   return { id: body._id!, ...payload };

@@ -18,12 +18,14 @@ Não é necessário baixar navegadores: a suíte é **somente de API** (usa o
 `APIRequestContext` do Playwright).
 
 ## Execução
-
 ```bash
 npm test              # executa toda a suíte
 npm run test:api      # alias para toda a suíte (100% API)
 npm run test:smoke    # apenas os 5 testes de smoke (@smoke)
 npm run test:criticos # apenas os 25 testes de risco alto (@critico)
+npm run test:latencia # avaliação isolada de latência da API (GET, 20 amostras)
+npm run test:contratos      # contratos: motor + registro (56 testes, sem rede)
+npm run test:contratos:api  # contratos: integração com a API (25 testes)
 npm run typecheck     # checagem de tipos (tsc --noEmit)
 npm run report        # abre o relatório HTML da última execução
 ```
@@ -40,25 +42,36 @@ npx playwright test -g "login"             # por título
 
 | Script               | Descrição                                                    |
 | -------------------- | ------------------------------------------------------------ |
-| `npm test`           | Regressão completa: 144 testes (1 worker).                   |
+| `npm test`           | Regressão completa: 265 testes (1 worker).                   |
 | `npm run test:api`   | Alias de `npm test` (a suíte inteira é API).                 |
 | `npm run test:smoke` | Smoke: 5 testes (`--grep @smoke`), ~6 s.                     |
 | `npm run test:criticos` | Risco alto: 25 testes (`--grep @critico`), ~37 s.         |
 | `npm run test:paralelo` | Executa com 2 workers (mais rápido, pode receber **429**). |
+| `npm run test:latencia` | Latência da API: config e suíte isoladas, ~5 s.            |
+| `npm run test:contratos` | Contratos: motor e registro, 56 testes **sem rede**, ~1 s. |
+| `npm run test:contratos:api` | Contratos contra a API real, 25 testes, ~18 s.        |
 | `npm run typecheck`  | Verifica os tipos com TypeScript.                            |
 | `npm run report`     | Abre o relatório HTML.                                       |
 
 A classificação de risco, os grupos de regressão e as regras de evolução das
 tags estão em [`docs/regression-strategy.md`](docs/regression-strategy.md);
 os critérios de aprovação (quality gate) estão em
-[`docs/quality-gate.md`](docs/quality-gate.md); e o escopo dos testes de
+[`docs/quality-gate.md`](docs/quality-gate.md); o escopo dos testes de
 segurança (autenticação, autorização, entradas, exposição de dados e
 sanitização de logs) está em
-[`docs/security-testing.md`](docs/security-testing.md).
+[`docs/security-testing.md`](docs/security-testing.md); a avaliação de
+latência da API está em
+[`docs/performance-testing.md`](docs/performance-testing.md); e o catálogo de
+contratos da API está em
+[`docs/api-contracts.md`](docs/api-contracts.md).
 
 ## Estrutura
 
 ```
+contracts/                       # motor e registro de contratos (sem dependências)
+  schema.ts                      # validador de schemas e classificação de divergências
+  contratos.ts                   # registro dos 25 contratos da API (fonte da verdade)
+  index.ts                       # API pública: buscar/verificar/listar contratos
 tests/
   fixtures.ts                 # test/expect estendidos (evidência automática de API)
   health.spec.ts              # health check da API
@@ -69,14 +82,23 @@ tests/
   produtos/                   # GET/POST/PUT/DELETE /produtos
   usuarios/                   # GET/POST/PUT/DELETE /usuarios
   carrinhos/                  # GET/POST e conclusão/cancelamento de compra
+  contratos/                 # testes dos contratos da API
+    schema.spec.ts           # motor de schemas (35 testes, sem rede)
+    contratos.spec.ts        # consistência do registro (21 testes, sem rede)
+    contratos-api.spec.ts    # contratos contra a API real (25 testes)
+  performance/                # avaliação isolada de latência (fora da regressão)
+    api-latency.spec.ts
   helpers/                    # utilitários reutilizados pelos testes
     autenticacao.ts
     usuarios.ts
     produtos.ts
     carrinhos.ts
     contrato.ts               # validadores de contrato centralizados
+    contratos.ts              # adaptador Playwright do motor de contratos
     diagnostico.ts            # sanitização e classificação de status para evidências
     diagnostico.sanitizer.spec.ts  # testes unitários do sanitizador
+    latencia.ts                # medição, classificação de falhas e estatística
+    latencia.spec.ts          # testes unitários do cálculo estatístico (sem rede)
     limpeza.ts                # exclusão com proteção contra 429 (1 tentativa extra)
 docs/
   traceability-matrix.md      # matriz requisito x cenário x arquivo (99 requisitos)
@@ -84,7 +106,49 @@ docs/
   regression-strategy.md      # classificação de risco e grupos smoke/críticos
   quality-gate.md             # critérios de aprovação da suíte
   security-testing.md         # escopo, achados e sanitização (ETAPA 11)
+  performance-testing.md      # avaliação de latência da API (ETAPA 12)
+  api-contracts.md            # catálogo de contratos e divergências (ETAPA 13)
+playwright.latencia.config.ts # config isolado da suíte de desempenho
 ```
+
+## Contratos da API
+
+A pasta `contracts/` mantém a **fonte da verdade estrutural** da API: o que
+cada endpoint deve devolver (status, `content-type` e forma do corpo). O
+motor (`contracts/schema.ts`) não tem dependência externa e classifica cada
+divergência como **incompatível** (quebra de contrato) ou **compatível** (campo
+novo, que não reprova a suíte).
+
+- `npm run test:contratos` roda a suíte local do motor e do registro
+  (**56 testes, sem rede**) — é a checagem que detecta mudança de contrato em
+  tempo de build.
+- `npm run test:contratos:api` roda a integração com a API real
+  (**25 testes**), confirmando cada contrato registrado contra a API pública.
+- Os contratos também são verificados **dentro dos testes funcionais**: cada
+  cenário relevante chama `validarContrato('id.do.contrato', response)`, de
+  modo que uma mudança de formato na API quebra a suíte mesmo que as
+  asserções por campo continuem passando.
+
+As divergências conhecidas entre documentação, contrato e ambiente (D1–D8)
+estão registradas em [`docs/api-contracts.md`](docs/api-contracts.md) — elas
+são **documentadas**, não "corrigidas" na suíte.
+
+
+## Avaliação de latência
+
+`npm run test:latencia` executa uma suíte **separada** que mede o tempo de
+resposta de 4 endpoints `GET` de leitura (5 amostras fixas por cenário, sem
+concorrência e sem criar dados). Ela usa um config próprio
+(`playwright.latencia.config.ts`) e **não** faz parte da regressão funcional:
+`playwright.config.ts` ignora `**/performance/**`, de modo que `npm test` não
+mistura métricas de desempenho com resultados funcionais nem adiciona
+requisições à API pública compartilhada.
+
+Os resultados são gravados em `performance-results/` (fora do controle de
+versão) e nenhuma amostra lenta reprova a execução. O escopo, as métricas, os
+limites experimentais (que **não** são SLAs) e o motivo de a execução ser
+manual — e não no CI — estão em
+[`docs/performance-testing.md`](docs/performance-testing.md).
 
 ## Cobertura
 
@@ -97,7 +161,9 @@ docs/
 
 Os testes validam **status HTTP, corpo e mensagens** de sucesso e de erro, além
 de conferir a persistência das mudanças com consultas de verificação. As
-validações de contrato ficam centralizadas em `tests/helpers/contrato.ts`.
+validações de contrato ficam centralizadas em `tests/helpers/contrato.ts` e,
+a partir da ETAPA 13, a **forma** da resposta é verificada contra o registro de
+contratos (`contracts/`) em `tests/helpers/contratos.ts`.
 
 O rastreio completo (requisito → cenário → arquivo → resultado) e a análise de
 lacunas por risco estão em [`docs/traceability-matrix.md`](docs/traceability-matrix.md)
@@ -131,35 +197,46 @@ e [`docs/coverage-analysis.md`](docs/coverage-analysis.md).
   - `--workers=2` (~20 req/s): o `GET /usuarios` do próprio *health check*
     (apenas leitura) já retorna **HTTP 429** — é limite de taxa, não contenção
     de dados.
-  - `--workers=1` (~10 req/s): suíte inteira **144 passed / 0 failed**.
+  - `--workers=1` (~10 req/s): suíte inteira **265 passed / 0 failed**.
 - Por isso o padrão é `workers: 1` (local e CI). `npm run test:paralelo`
   mantém o modo rápido disponível para quando o ambiente permitir.
 - Se uma execução receber **429**, trate como **condição do ambiente**: limpe os
   resíduos, aguarde a janela de rate limit e execute novamente. Asserções como
   `Expected: 201 / Received: 429` **não** indicam defeito do teste.
+- A avaliação de latência (`npm run test:latencia`) também usa `workers: 1` e
+  requisições sequenciais: 20 leituras por execução, sem criar dados.
 
 ## Relatórios
 
-A configuração gera três formatos simultaneamente (definidos em
-`playwright.config.ts`):
+A configuração atual (`playwright.config.ts`) gera o **relatório HTML**:
 
 | Reporter | Saída | Uso |
 | -------- | ----- | --- |
-| `list`   | terminal | acompanhamento em tempo real |
 | `html`   | `playwright-report/index.html` | navegação visual por teste, duração, tentativas e anexos |
-| `json`   | `test-results/results.json` | consumo estruturado (total, aprovados, falhos, ignorados, duração, arquivos e mensagens) |
-| `github` | anotações no job | **somente no CI** (`process.env.CI`) |
 
-O relatório HTML não abre automaticamente (`open: 'never'`). Para abri-lo:
+O relatório HTML abre automaticamente ao final da execução quando há terminal
+associado (`open: 'always'`); em ambiente sem TTY — como o CI — ele apenas é
+gerado. Para abrir manualmente:
 
 ```bash
 npm run report          # equivale a npx playwright show-report
 ```
 
-Os diretórios `playwright-report/` e `test-results/` são gerados
-automaticamente e estão no `.gitignore` (não são versionados). O JSON conterá,
-entre outros campos, `stats` com o resumo da execução e a lista de `suites`
-com o status de cada teste.
+Para obter o resumo estruturado da execução (total, aprovados, falhos,
+ignorados, instáveis e duração), gere o reporter JSON sob demanda:
+
+```bash
+npx playwright test --reporter=json
+```
+
+Os diretórios `playwright-report/`, `test-results/` e `performance-results/`
+são gerados automaticamente e estão no `.gitignore` (não são versionados).
+O JSON de execução, quando gerado, conterá entre outros campos `stats` com o
+resumo da execução e a lista de `suites` com o status de cada teste.
+
+A suíte de latência usa config próprio (`playwright.latencia.config.ts`) com
+reporter `list`: ela **não** sobrescreve o relatório HTML nem o JSON da
+regressão funcional, e grava as métricas em `performance-results/*.json`.
 
 ## Evidências de falha
 
@@ -224,8 +301,12 @@ O workflow `.github/workflows/playwright.yml` roda a cada `push` e
 
 1. instala dependências com `npm ci` (cache do npm);
 2. roda `npm run typecheck`;
-3. roda a suíte com `npx playwright test`;
-4. publica os artefatos (`playwright-report/` e `test-results/results.json`)
+3. roda `npm run test:contratos` (56 testes locais do motor e do registro —
+   **sem rede**, falha rápido se um contrato for quebrado);
+4. roda `npm run test:smoke` (5 testes);
+5. roda `npm run test:criticos` (25 testes);
+6. roda a suíte completa com `npx playwright test`;
+7. publica os artefatos (`playwright-report/` e `test-results/results.json`)
    com `if: always()`, mesmo quando os testes falham.
 
 O job mantém o status de falha real (sem `continue-on-error`), usa apenas
@@ -236,6 +317,15 @@ navegadores, pois a suíte é 100% API.
 Para baixar os relatórios no GitHub: na execução do workflow, seção
 **Artifacts** → `playwright-report` (contém o HTML e o `results.json`).
 
+### Por que a avaliação de latência não roda no CI
+
+A suíte de desempenho é **executada sob demanda** (`npm run test:latencia`),
+fora do pipeline, porque: (a) a API é pública e compartilhada, então o número
+medido depende da carga de terceiros e não é comparável entre execuções;
+(b) somar as 21 leituras ao pipeline aumenta o risco de **429** na regressão
+funcional; e (c) não existe SLA, logo o resultado não tem valor de gate. O
+detalhamento está em [`docs/performance-testing.md`](docs/performance-testing.md).
+
 ## Observações
 
 - A API é pública e compartilhada: uma taxa de requisições alta retorna
@@ -244,3 +334,5 @@ Para baixar os relatórios no GitHub: na execução do workflow, seção
 - Nenhum token, senha real ou segredo é versionado; as credenciais usadas nos
   testes são fictícias e geradas em tempo de execução.
 - Os relatórios são gerados apenas durante a execução e nunca versionados.
+- A avaliação de latência é diagnóstica: ela **não** reprova a execução por
+  causa de uma amostra lenta e **não** representa um SLA.

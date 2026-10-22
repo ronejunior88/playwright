@@ -12,15 +12,26 @@ ServeRest ao cenário automatizado que o verifica.
 | Pontos da API inventariados | 16 (16 combinações `método + rota`) |
 | Respostas HTTP documentadas mapeadas | 45 (somando as listas `Responses` dos 16 pontos) |
 | Requisitos rastreados nesta matriz | 99 |
-| Testes da suíte | 176 em 18 arquivos `*.spec.ts` |
-| Última execução completa | 2026-10-21 — `npm test` — **176/176 aprovados**, 0 falhas, 0 ignorados, 0 instáveis, ~172 s |
-| Evidência | `test-results/results.json` (`stats`: `expected 176`, `unexpected 0`, `skipped 0`, `flaky 0`) |
+| Testes da suíte | 265 em 22 arquivos `*.spec.ts` |
+| Última execução completa | 2026-10-22 — `npm test` — **265/265 aprovados**, 0 falhas, 0 ignorados, 0 instáveis, ~138 s |
+| Evidência | `playwright-report/index.html` (reporter HTML) e `npx playwright test --list` → `Total: 265 tests in 22 files` |
 
 > A partir da ETAPA 11 a suíte passou a incluir 32 testes adicionais
 > (sanitizador, exposição de dados/erros, validações de entrada e cenários de
 > autenticação/autorização); a matriz de requisitos da API (99) permanece a
 > mesma e os novos cenários estão documentados em
 > `docs/security-testing.md`.
+>
+> A ETAPA 12 acrescentou 8 testes unitários do cálculo estatístico de
+> latência (`tests/helpers/latencia.spec.ts`). A suíte de avaliação de
+> desempenho (4 testes, 20 amostras) roda **fora** da regressão funcional, em
+> config próprio, e está documentada em `docs/performance-testing.md`; por isso
+> ela não altera a matriz de requisitos da API.
+>
+> A ETAPA 13 acrescentou 81 testes de **contrato** (35 do motor de schemas, 21
+> de consistência do registro e 25 de integração com a API). Eles não criam
+> requisitos novos: verificam a **forma** das respostas já mapeadas acima e
+> estão documentados em `docs/api-contracts.md`.
 
 Método: leitura direta da documentação (HTML da versão publicada), inventário de
 endpoints e respostas, comparação com os títulos reais dos testes da suíte e
@@ -236,9 +247,11 @@ descritos na documentação da versão 2.22.1. Todos receberam cenário automati
 | Cobertura implícita declarada | 2 (USER-022, CART-010) |
 | Requisitos de caminho positivo (2xx esperado) | 50 |
 | Requisitos de rejeição/erro (4xx esperado) | 49 |
-| Testes da suíte | 176 (176/176 aprovados em 2026-10-21; 144 na ETAPA 9) |
+| Testes da suíte | 265 (265/265 aprovados em 2026-10-22; 184 na ETAPA 12; 176 na ETAPA 11; 144 na ETAPA 9) |
 | Testes adicionados na ETAPA 9 | 9 (filtro `password`; filtros combinados em usuários e em carrinhos; 3 variações de `Authorization` malformado; 3 rejeições de chave de query não permitida) |
 | Testes adicionados na ETAPA 11 | 32 (ver distribuição em `docs/security-testing.md`) |
+| Testes adicionados na ETAPA 12 | 8 (testes unitários da estatística de latência, sem rede) |
+| Testes adicionados na ETAPA 13 | 81 (35 do motor de schemas, 21 de consistência do registro, 25 de integração com a API) |
 
 > Conferência: 50 + 49 = 99 requisitos; 98 + 1 = 99 (nenhum requisito sem status).
 

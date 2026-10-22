@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures';
+import { validarContrato } from '../helpers/contratos';
 import { fazerLogin } from '../helpers/autenticacao';
 import {
   bearer,
@@ -73,6 +74,8 @@ test.describe('Criação de produtos - POST /produtos', () => {
     expect(corpo.preco).toBe(produto.preco);
     expect(corpo.descricao).toBe(produto.descricao);
     expect(corpo.quantidade).toBe(produto.quantidade);
+
+    await validarContrato('produtos.item', consulta);
   });
 
   test('deve rejeitar a criação sem token de autorização @critico', async ({
@@ -93,6 +96,8 @@ test.describe('Criação de produtos - POST /produtos', () => {
     const body = (await response.json()) as MensagemResposta;
     expect(body.message).toBe(MENSAGEM_TOKEN_INVALIDO);
     expect(body).not.toHaveProperty('_id');
+
+    await validarContrato('auth.sem-token', response);
 
     const consulta = await request.get('/produtos', {
       params: { nome: payload.nome },
@@ -161,6 +166,8 @@ test.describe('Criação de produtos - POST /produtos', () => {
       expect(body.message).toBe(MENSAGEM_TOKEN_INVALIDO);
       expect(body).not.toHaveProperty('_id');
 
+      await validarContrato('auth.sem-token', response);
+
       const consulta = await request.get('/produtos', {
         params: { nome: payload.nome },
       });
@@ -192,6 +199,8 @@ test.describe('Criação de produtos - POST /produtos', () => {
     expect(body.message).toBe(MENSAGEM_ROTA_ADMIN);
     expect(body).not.toHaveProperty('_id');
 
+    await validarContrato('auth.nao-admin', response);
+
     const consulta = await request.get('/produtos', {
       params: { nome: payload.nome },
     });
@@ -220,6 +229,8 @@ test.describe('Criação de produtos - POST /produtos', () => {
     const segundoBody = (await segundo.json()) as MensagemResposta;
     expect(segundoBody.message).toBe('Já existe produto com esse nome');
     expect(segundoBody).not.toHaveProperty('_id');
+
+    await validarContrato('produtos.nome-duplicado', segundo);
 
     const consulta = await request.get('/produtos', {
       params: { nome: produto.nome },
@@ -268,6 +279,8 @@ test.describe('Criação de produtos - POST /produtos', () => {
       'campos não documentados devem ser rejeitados',
     ).toBe(true);
 
+    await validarContrato('erros.validacao-campos', response);
+
     const consulta = await request.get('/produtos', { params: { nome } });
     expect(consulta.status()).toBe(200);
     const lista = (await consulta.json()) as ListaProdutos;
@@ -289,6 +302,8 @@ test.describe('Criação de produtos - POST /produtos', () => {
       const body = (await response.json()) as ErroValidacaoProduto;
       expect(body).toMatchObject(caso.corpoEsperado);
       expect(body).not.toHaveProperty('_id');
+
+      await validarContrato('erros.validacao-campos', response);
     });
   }
 });

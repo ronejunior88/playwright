@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures';
+import { validarContrato } from '../helpers/contratos';
 import { fazerLogin } from '../helpers/autenticacao';
 import {
   bearer,
@@ -105,6 +106,8 @@ test.describe('Exposição de dados sensíveis e tratamento de erros', () => {
     expect(corpo).not.toHaveProperty('token');
     expect(corpo).not.toHaveProperty('hash');
     expect(corpo).not.toHaveProperty('salt');
+
+    await validarContrato('usuarios.item', consulta);
   });
 
   test('não deve ecoar o valor da senha em mensagem de erro de login', async ({
@@ -123,6 +126,8 @@ test.describe('Exposição de dados sensíveis e tratamento de erros', () => {
 
     const body = corpo as MensagemResposta;
     expect(body.message).toBe('Email e/ou senha inválidos');
+
+    await validarContrato('login.credenciais-invalidas', response);
   });
 
   test('não deve expor detalhes internos ao consultar recursos inexistentes', async ({
@@ -135,6 +140,8 @@ test.describe('Exposição de dados sensíveis e tratamento de erros', () => {
       const corpo = await response.json();
       assertSemVazamentoInterno(corpo, `GET ${endpoint}/{id}`);
       expect((corpo as MensagemResposta).message).toBeTruthy();
+
+      await validarContrato('erros.mensagem', response);
     }
   });
 
@@ -149,6 +156,8 @@ test.describe('Exposição de dados sensíveis e tratamento de erros', () => {
     const corpo = await response.json();
     assertSemVazamentoInterno(corpo, 'POST /produtos sem token');
     expect((corpo as MensagemResposta).message).toBe(MENSAGEM_TOKEN_INVALIDO);
+
+    await validarContrato('auth.sem-token', response);
   });
 
   test('deve responder sem vazamento em PUT com id inexistente (caminho 201)', async ({
@@ -177,11 +186,15 @@ test.describe('Exposição de dados sensíveis e tratamento de erros', () => {
     expect(body._id).toBeTruthy();
     idsProdutos.push(body._id!);
 
+    await validarContrato('produtos.criacao', response);
+
     const consultaUrl = await request.get(`/produtos/${id}`);
     expect(consultaUrl.status()).toBe(400);
     const corpoUrl = (await consultaUrl.json()) as MensagemResposta;
     assertSemVazamentoInterno(corpoUrl, `GET /produtos/${id}`);
     expect(corpoUrl.message).toBe('Produto não encontrado');
+
+    await validarContrato('erros.mensagem', consultaUrl);
   });
 
   test('deve rejeitar id de formato inválido sem expor detalhes internos', async ({
@@ -193,6 +206,8 @@ test.describe('Exposição de dados sensíveis e tratamento de erros', () => {
       expect(response.status(), `${endpoint}: id malformado`).toBe(400);
       const corpo = await response.json();
       assertSemVazamentoInterno(corpo, `GET ${endpoint}/curto`);
+
+      await validarContrato('erros.id-invalido', response);
     }
   });
 

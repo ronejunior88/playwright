@@ -1,5 +1,6 @@
 import { expect, test } from '../fixtures';
 import { validarMensagemComId, validarUsuario } from '../helpers/contrato';
+import { validarContrato } from '../helpers/contratos';
 import {
   excluirUsuario,
   gerarEmailUnico,
@@ -41,6 +42,8 @@ test.describe('Criação de usuários - POST /usuarios', () => {
     expect(body.message).toBe('Cadastro realizado com sucesso');
     validarMensagemComId(body);
 
+    await validarContrato('usuarios.criacao', response);
+
     idsCriados.push(body._id!);
 
     const consulta = await request.get(`/usuarios/${body._id}`);
@@ -53,6 +56,8 @@ test.describe('Criação de usuários - POST /usuarios', () => {
     expect(corpo.email).toBe(dados.email);
     expect(corpo.administrador).toBe(dados.administrador);
     expect(corpo.password).toBe(dados.password);
+
+    await validarContrato('usuarios.item', consulta);
   });
 
   test('deve rejeitar a criação com email duplicado', async ({ request }) => {
@@ -81,6 +86,8 @@ test.describe('Criação de usuários - POST /usuarios', () => {
     expect(segundoBody.message).toBe('Este email já está sendo usado');
     expect(segundoBody).not.toHaveProperty('_id');
 
+    await validarContrato('usuarios.email-duplicado', segundo);
+
     const consulta = await request.get('/usuarios', {
       params: { email: dados.email },
     });
@@ -107,6 +114,8 @@ test.describe('Criação de usuários - POST /usuarios', () => {
     const body = (await response.json()) as ErroValidacao;
     expect(body.nome).toBe('nome é obrigatório');
     expect(body).not.toHaveProperty('_id');
+
+    await validarContrato('erros.validacao-campos', response);
   });
 
   test('deve retornar erro ao criar usuário sem email', async ({
@@ -126,6 +135,8 @@ test.describe('Criação de usuários - POST /usuarios', () => {
     const body = (await response.json()) as ErroValidacao;
     expect(body.email).toBe('email é obrigatório');
     expect(body).not.toHaveProperty('_id');
+
+    await validarContrato('erros.validacao-campos', response);
   });
 
   test('deve retornar erro ao criar usuário sem password', async ({
@@ -145,6 +156,8 @@ test.describe('Criação de usuários - POST /usuarios', () => {
     const body = (await response.json()) as ErroValidacao;
     expect(body.password).toBe('password é obrigatório');
     expect(body).not.toHaveProperty('_id');
+
+    await validarContrato('erros.validacao-campos', response);
   });
 
   test('deve retornar erro ao criar usuário sem administrador', async ({
@@ -164,6 +177,8 @@ test.describe('Criação de usuários - POST /usuarios', () => {
     const body = (await response.json()) as ErroValidacao;
     expect(body.administrador).toBe('administrador é obrigatório');
     expect(body).not.toHaveProperty('_id');
+
+    await validarContrato('erros.validacao-campos', response);
   });
 
   test('deve retornar erro ao enviar payload vazio', async ({ request }) => {
@@ -178,6 +193,8 @@ test.describe('Criação de usuários - POST /usuarios', () => {
     expect(body.password).toBe('password é obrigatório');
     expect(body.administrador).toBe('administrador é obrigatório');
     expect(body).not.toHaveProperty('_id');
+
+    await validarContrato('erros.validacao-campos', response);
   });
 
   test('deve retornar erro ao criar usuário com email inválido', async ({
@@ -198,6 +215,8 @@ test.describe('Criação de usuários - POST /usuarios', () => {
     const body = (await response.json()) as ErroValidacao;
     expect(body.email).toBe('email deve ser um email válido');
     expect(body).not.toHaveProperty('_id');
+
+    await validarContrato('erros.validacao-campos', response);
   });
 
   test('deve retornar erro ao criar usuário com nome vazio', async ({
@@ -218,6 +237,8 @@ test.describe('Criação de usuários - POST /usuarios', () => {
     const body = (await response.json()) as ErroValidacao;
     expect(body.nome).toBe('nome não pode ficar em branco');
     expect(body).not.toHaveProperty('_id');
+
+    await validarContrato('erros.validacao-campos', response);
   });
 
   test('deve retornar erro ao criar usuário com email vazio', async ({
@@ -238,6 +259,8 @@ test.describe('Criação de usuários - POST /usuarios', () => {
     const body = (await response.json()) as ErroValidacao;
     expect(body.email).toBe('email não pode ficar em branco');
     expect(body).not.toHaveProperty('_id');
+
+    await validarContrato('erros.validacao-campos', response);
   });
 
   test('deve retornar erro ao criar usuário com password vazio', async ({
@@ -258,6 +281,8 @@ test.describe('Criação de usuários - POST /usuarios', () => {
     const body = (await response.json()) as ErroValidacao;
     expect(body.password).toBe('password não pode ficar em branco');
     expect(body).not.toHaveProperty('_id');
+
+    await validarContrato('erros.validacao-campos', response);
   });
 
   test('deve retornar erro ao criar usuário com administrador de tipo incorreto', async ({
@@ -278,5 +303,7 @@ test.describe('Criação de usuários - POST /usuarios', () => {
     const body = (await response.json()) as ErroValidacao;
     expect(body.administrador).toBe("administrador deve ser 'true' ou 'false'");
     expect(body).not.toHaveProperty('_id');
+
+    await validarContrato('erros.validacao-campos', response);
   });
 });

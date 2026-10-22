@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures';
+import { validarContrato } from '../helpers/contratos';
 import { fazerLogin } from '../helpers/autenticacao';
 import { criarCarrinhoTeste, cancelarCompraSeguro } from '../helpers/carrinhos';
 import { criarProdutoTeste, excluirProduto } from '../helpers/produtos';
@@ -37,11 +38,15 @@ test.describe('Exclusão de usuários - DELETE /usuarios/{_id}', () => {
     const body = (await response.json()) as MensagemResposta;
     expect(body.message).toBe('Registro excluído com sucesso');
 
+    await validarContrato('usuarios.exclusao', response);
+
     const consulta = await request.get(`/usuarios/${usuario.id}`);
     expect(consulta.status()).toBe(400);
 
     const corpo = (await consulta.json()) as MensagemResposta;
     expect(corpo.message).toBe('Usuário não encontrado');
+
+    await validarContrato('erros.mensagem', consulta);
   });
 
   test('deve retornar sucesso sem excluir registros ao excluir usuário inexistente', async ({
@@ -56,6 +61,8 @@ test.describe('Exclusão de usuários - DELETE /usuarios/{_id}', () => {
 
     const body = (await response.json()) as MensagemResposta;
     expect(body.message).toBe('Nenhum registro excluído');
+
+    await validarContrato('usuarios.exclusao', response);
   });
 
   test('deve rejeitar a exclusão de usuário com carrinho cadastrado @critico', async ({
@@ -90,6 +97,8 @@ test.describe('Exclusão de usuários - DELETE /usuarios/{_id}', () => {
         'Não é permitido excluir usuário com carrinho cadastrado',
       );
       expect(body.idCarrinho).toBe(carrinhoId);
+
+      await validarContrato('erros.mensagem', response);
 
       const consulta = await request.get(`/usuarios/${usuario.id}`);
       expect(consulta.status()).toBe(200);

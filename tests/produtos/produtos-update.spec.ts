@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures';
+import { validarContrato } from '../helpers/contratos';
 import { fazerLogin } from '../helpers/autenticacao';
 import {
   bearer,
@@ -79,6 +80,8 @@ test.describe('Atualização de produtos - PUT /produtos/{_id}', () => {
     const body = (await response.json()) as MensagemResposta;
     expect(body.message).toBe('Registro alterado com sucesso');
 
+    await validarContrato('produtos.atualizacao', response);
+
     const consulta = await request.get(`/produtos/${produto.id}`);
     expect(consulta.status()).toBe(200);
 
@@ -88,6 +91,8 @@ test.describe('Atualização de produtos - PUT /produtos/{_id}', () => {
     expect(corpo.preco).toBe(dadosAtualizados.preco);
     expect(corpo.descricao).toBe(dadosAtualizados.descricao);
     expect(corpo.quantidade).toBe(dadosAtualizados.quantidade);
+
+    await validarContrato('produtos.item', consulta);
   });
 
   test('deve rejeitar atualização utilizando o nome de outro produto', async ({
@@ -112,6 +117,8 @@ test.describe('Atualização de produtos - PUT /produtos/{_id}', () => {
 
     const body = (await response.json()) as MensagemResposta;
     expect(body.message).toBe('Já existe produto com esse nome');
+
+    await validarContrato('produtos.nome-duplicado', response);
 
     const consultaB = await request.get(`/produtos/${produtoB.id}`);
     expect(consultaB.status()).toBe(200);
@@ -143,6 +150,8 @@ test.describe('Atualização de produtos - PUT /produtos/{_id}', () => {
     const body = (await response.json()) as MensagemResposta;
     expect(body.message).toBe(MENSAGEM_TOKEN_INVALIDO);
 
+    await validarContrato('auth.sem-token', response);
+
     const consulta = await request.get(`/produtos/${produto.id}`);
     expect(consulta.status()).toBe(200);
     const corpo = (await consulta.json()) as ProdutoApi;
@@ -172,6 +181,8 @@ test.describe('Atualização de produtos - PUT /produtos/{_id}', () => {
     const body = (await response.json()) as MensagemResposta;
     expect(body.message).toBe(MENSAGEM_TOKEN_INVALIDO);
 
+    await validarContrato('auth.sem-token', response);
+
     const consulta = await request.get(`/produtos/${produto.id}`);
     expect(consulta.status()).toBe(200);
     const corpo = (await consulta.json()) as ProdutoApi;
@@ -200,6 +211,8 @@ test.describe('Atualização de produtos - PUT /produtos/{_id}', () => {
 
     const body = (await response.json()) as MensagemResposta;
     expect(body.message).toBe(MENSAGEM_ROTA_ADMIN);
+
+    await validarContrato('auth.nao-admin', response);
 
     const consulta = await request.get(`/produtos/${produto.id}`);
     expect(consulta.status()).toBe(200);
@@ -235,6 +248,10 @@ test.describe('Atualização de produtos - PUT /produtos/{_id}', () => {
     expect(body.message).toBe('Cadastro realizado com sucesso');
     expect(typeof body._id).toBe('string');
     expect(body._id!.length).toBeGreaterThan(0);
+
+    // PUT com id inexistente cria o produto: a resposta segue o formato de
+    // criação (201 + message + _id).
+    await validarContrato('produtos.criacao', response);
 
     idsCriados.push(body._id!);
 
@@ -276,6 +293,8 @@ test.describe('Atualização de produtos - PUT /produtos/{_id}', () => {
       const body = (await response.json()) as ErroValidacaoProduto;
       expect(body).toMatchObject(caso.corpoEsperado);
       expect(body).not.toHaveProperty('_id');
+
+      await validarContrato('erros.validacao-campos', response);
 
       const consulta = await request.get(`/produtos/${produtoBase.id}`);
       expect(consulta.status()).toBe(200);

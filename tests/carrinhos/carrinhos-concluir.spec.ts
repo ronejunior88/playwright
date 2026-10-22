@@ -1,5 +1,6 @@
 import { type APIRequestContext } from '@playwright/test';
 import { expect, test } from '../fixtures';
+import { validarContrato } from '../helpers/contratos';
 import {
   cancelarCompraSeguro,
   concluirCompra,
@@ -115,6 +116,8 @@ test.describe('Conclusão de compra - DELETE /carrinhos/concluir-compra', () => 
     const body = (await response.json()) as MensagemCarrinho;
     expect(body.message).toBe(MENSAGEM_CONCLUSAO_SUCESSO);
 
+    await validarContrato('carrinhos.conclusao', response);
+
     const consulta = await request.get(`/carrinhos/${carrinhoId}`);
     expect(consulta.status()).toBe(400);
     const corpoConsulta = (await consulta.json()) as ErroCarrinho;
@@ -143,6 +146,8 @@ test.describe('Conclusão de compra - DELETE /carrinhos/concluir-compra', () => 
 
     const body = (await response.json()) as MensagemCarrinho;
     expect(body.message).toBe(MENSAGEM_USUARIO_SEM_CARRINHO);
+
+    await validarContrato('carrinhos.conclusao', response);
   });
 
   test('deve rejeitar a conclusão sem token de autorização', async ({
@@ -157,6 +162,8 @@ test.describe('Conclusão de compra - DELETE /carrinhos/concluir-compra', () => 
 
     const body = (await response.json()) as ErroCarrinho;
     expect(body.message).toBe(MENSAGEM_TOKEN_CARRINHO);
+
+    await validarContrato('auth.sem-token', response);
   });
 
   test('deve rejeitar a conclusão com token inválido', async ({ request }) => {
@@ -171,6 +178,8 @@ test.describe('Conclusão de compra - DELETE /carrinhos/concluir-compra', () => 
 
     const body = (await response.json()) as ErroCarrinho;
     expect(body.message).toBe(MENSAGEM_TOKEN_CARRINHO);
+
+    await validarContrato('auth.sem-token', response);
   });
 
   test('deve rejeitar a conclusão com Authorization malformado (token sem prefixo Bearer)', async ({
@@ -196,6 +205,8 @@ test.describe('Conclusão de compra - DELETE /carrinhos/concluir-compra', () => 
     const body = (await response.json()) as ErroCarrinho;
     expect(body.message).toBe(MENSAGEM_TOKEN_CARRINHO);
 
+    await validarContrato('auth.sem-token', response);
+
     const lista = await listarCarrinhos(request, {
       idUsuario: conta.usuario.id,
     });
@@ -218,12 +229,14 @@ test.describe('Conclusão de compra - DELETE /carrinhos/concluir-compra', () => 
     expect(((await primeira.json()) as MensagemCarrinho).message).toBe(
       MENSAGEM_CONCLUSAO_SUCESSO,
     );
+    await validarContrato('carrinhos.conclusao', primeira);
 
     const segunda = await concluirCompra(request, conta.token);
     expect(segunda.status()).toBe(200);
     expect(((await segunda.json()) as MensagemCarrinho).message).toBe(
       MENSAGEM_USUARIO_SEM_CARRINHO,
     );
+    await validarContrato('carrinhos.conclusao', segunda);
 
     const estoqueFinal = await obterEstoque(request, produto.id);
     expect(estoqueFinal).toBe(estoqueAposCriar);

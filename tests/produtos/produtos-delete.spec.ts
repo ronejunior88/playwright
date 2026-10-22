@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures';
+import { validarContrato } from '../helpers/contratos';
 import { fazerLogin } from '../helpers/autenticacao';
 import { criarCarrinhoTeste, cancelarCompraSeguro } from '../helpers/carrinhos';
 import {
@@ -71,11 +72,15 @@ test.describe('Exclusão de produtos - DELETE /produtos/{_id}', () => {
     const body = (await response.json()) as MensagemResposta;
     expect(body.message).toBe('Registro excluído com sucesso');
 
+    await validarContrato('produtos.exclusao', response);
+
     const consulta = await request.get(`/produtos/${produto.id}`);
     expect(consulta.status()).toBe(400);
 
     const corpo = (await consulta.json()) as MensagemResposta;
     expect(corpo.message).toBe('Produto não encontrado');
+
+    await validarContrato('erros.mensagem', consulta);
   });
 
   test('deve retornar sucesso sem excluir registros ao excluir produto inexistente', async ({
@@ -95,6 +100,8 @@ test.describe('Exclusão de produtos - DELETE /produtos/{_id}', () => {
 
     const body = (await response.json()) as MensagemResposta;
     expect(body.message).toBe('Nenhum registro excluído');
+
+    await validarContrato('produtos.exclusao', response);
   });
 
   test('deve rejeitar a exclusão sem token de autorização', async ({
@@ -110,6 +117,8 @@ test.describe('Exclusão de produtos - DELETE /produtos/{_id}', () => {
 
     const body = (await response.json()) as MensagemResposta;
     expect(body.message).toBe(MENSAGEM_TOKEN_INVALIDO);
+
+    await validarContrato('auth.sem-token', response);
 
     const consulta = await request.get(`/produtos/${produto.id}`);
     expect(consulta.status()).toBe(200);
@@ -131,6 +140,8 @@ test.describe('Exclusão de produtos - DELETE /produtos/{_id}', () => {
 
     const body = (await response.json()) as MensagemResposta;
     expect(body.message).toBe(MENSAGEM_TOKEN_INVALIDO);
+
+    await validarContrato('auth.sem-token', response);
 
     const consulta = await request.get(`/produtos/${produto.id}`);
     expect(consulta.status()).toBe(200);
@@ -154,6 +165,8 @@ test.describe('Exclusão de produtos - DELETE /produtos/{_id}', () => {
 
     const body = (await response.json()) as MensagemResposta;
     expect(body.message).toBe(MENSAGEM_ROTA_ADMIN);
+
+    await validarContrato('auth.nao-admin', response);
 
     const consulta = await request.get(`/produtos/${produto.id}`);
     expect(consulta.status()).toBe(200);
@@ -192,6 +205,8 @@ test.describe('Exclusão de produtos - DELETE /produtos/{_id}', () => {
         'Não é permitido excluir produto que faz parte de carrinho',
       );
       expect(body.idCarrinhos).toContain(carrinhoId);
+
+      await validarContrato('erros.mensagem', response);
 
       const consulta = await request.get(`/produtos/${produto.id}`);
       expect(consulta.status()).toBe(200);

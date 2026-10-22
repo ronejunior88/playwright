@@ -9,6 +9,7 @@
     "test:smoke": "playwright test --grep @smoke",
     "test:criticos": "playwright test --grep @critico",
     "test:paralelo": "playwright test --workers=2",
+    "test:latencia": "playwright test --config=playwright.latencia.config.ts",
     "typecheck": "tsc --noEmit",
     "report": "playwright show-report"
   },

@@ -12,11 +12,11 @@ execução.
 2. Inventário dos pontos da API (método + rota) e das listas de status de cada
    `Responses` → 16 pontos e 45 respostas documentadas.
 3. Extração dos títulos reais dos 144 testes executados
-   (`test-results/results.json`) e cruzamento com cada requisito, linha a linha,
-   na matriz de rastreabilidade.
+   (relatório de execução do Playwright) e cruzamento com cada requisito,
+   linha a linha, na matriz de rastreabilidade.
 4. Comprovação por execução real contra `https://serverest.dev`.
    Nenhuma porcentagem foi estimada sem execução; toda métrica abaixo é
-   rastreável até uma linha da matriz ou até `results.json`.
+   rastreável até uma linha da matriz ou até o relatório de execução.
 
 Critérios de classificação:
 
@@ -35,11 +35,12 @@ Critérios de classificação:
 | Rotas que exigem administrador | 3 (`POST/PUT/DELETE /produtos`) |
 | Respostas HTTP documentadas | 45 (200 × 17, 201 × 5, 400 × 13, 401 × 7, 403 × 3) |
 | Requisitos rastreados | 99 |
-| Testes da suíte | 176 em 18 arquivos `*.spec.ts` |
+| Testes da suíte | 184 em 19 arquivos `*.spec.ts` |
 | Testes com `@critico` (risco alto) | 25 |
 | Testes com `@smoke` (subconjunto dos críticos) | 5 |
-| Grupos de regressão | smoke (5), críticos (25), completa (176) — ver `docs/regression-strategy.md` |
+| Grupos de regressão | smoke (5), críticos (25), completa (184) — ver `docs/regression-strategy.md` |
 | Testes de segurança (ETAPA 11) | 32 (12 do sanitizador + 7 de exposição/erros + 7 de entradas + 6 de auth/autorização) |
+| Testes de desempenho (ETAPA 12) | 4 (20 amostras de latência) — execução isolada, fora da regressão |
 | Testes adicionados na ETAPA 9 | 9 |
 | Cenários de validação de payload (erro por campo) | 57 (login 5, usuários 16, produtos 26, carrinhos 10) |
 
@@ -136,40 +137,49 @@ intenção do cenário (título e asserções principais): resultados esperados 
 filtro vazio contam como positivo; idempotência e mensagens de "não existe
 carrinho" contam como negativo.
 
+> A divisão 42/102 corresponde ao inventário de cenários HTTP da ETAPA 9
+> (144 testes). Os 40 testes acrescentados depois (segurança, sanitização e
+> estatística) não são cenários de requisição e, portanto, não entram nessa
+> classificação por caminho positivo/negativo.
+
 ## 4. Estatísticas da última execução
 
 | Item | Valor |
 | --- | --- |
-| Data/hora (UTC) | 2026-10-20 13:52:51 |
+| Data/hora (UTC) | 2026-10-22 |
 | Comando | `npm test` (`playwright test`, `workers: 1`) |
-| Aprovados | 144 |
+| Aprovados | 184 |
 | Falhas | 0 |
 | Ignorados | 0 |
 | Instáveis (flaky) | 0 |
-| Duração | 107,5 s (1,8 min) |
-| Evidência | `test-results/results.json` (`expected 144`, `unexpected 0`, `skipped 0`, `flaky 0`) |
+| Duração | 122 s (2,0 min) |
+| Evidência | `playwright-report/index.html` (reporter HTML) e `npx playwright test --list` → `Total: 184 tests in 19 files` |
 | Resíduos de dados de teste na API após a execução | 0 (varredura por prefixos `usuario-test`, `login-test`, `admin-etapa9-`, `Produto Playwright QA`, `Produto ETAPA9`) |
 
 Distribuição por arquivo (todos 100% aprovados):
 
 | Arquivo | Testes |
 | --- | --- |
-| `tests/auth/login.spec.ts` | 8 |
+| `tests/auth/login.spec.ts` | 10 |
 | `tests/usuarios/usuarios-get.spec.ts` | 11 |
 | `tests/usuarios/usuarios-create.spec.ts` | 12 |
 | `tests/usuarios/usuarios-update.spec.ts` | 9 |
 | `tests/usuarios/usuarios-delete.spec.ts` | 3 |
 | `tests/produtos/produtos-get.spec.ts` | 10 |
-| `tests/produtos/produtos-create.spec.ts` | 21 |
+| `tests/produtos/produtos-create.spec.ts` | 22 |
 | `tests/produtos/produtos-update.spec.ts` | 19 |
 | `tests/produtos/produtos-delete.spec.ts` | 6 |
 | `tests/carrinhos/carrinhos-get.spec.ts` | 12 |
-| `tests/carrinhos/carrinhos-create.spec.ts` | 18 |
-| `tests/carrinhos/carrinhos-concluir.spec.ts` | 5 |
+| `tests/carrinhos/carrinhos-create.spec.ts` | 20 |
+| `tests/carrinhos/carrinhos-concluir.spec.ts` | 6 |
 | `tests/carrinhos/carrinhos-cancelar.spec.ts` | 5 |
 | `tests/carrinhos/carrinhos-integridade.spec.ts` | 4 |
+| `tests/seguranca/entrada-validacao.spec.ts` | 7 |
+| `tests/seguranca/exposicao-erros.spec.ts` | 7 |
+| `tests/helpers/diagnostico.sanitizer.spec.ts` | 12 |
+| `tests/helpers/latencia.spec.ts` | 8 |
 | `tests/health.spec.ts` | 1 |
-| **Total** | **144** |
+| **Total** | **184** |
 
 ## 5. Lacunas por prioridade
 
@@ -183,7 +193,7 @@ Distribuição por arquivo (todos 100% aprovados):
 | **Baixa** | Semântica de filtro de texto (substring, maiúsculas/minúsculas, acentos) | Comportamento não especificado na documentação | Não coberto por indefinição documental; se especificado, vira requisito |
 | **Baixa** | Concorrência (dois clientes alterando o mesmo recurso) | Estado intermediário não observado | Fora do escopo desta etapa |
 | **Baixa** | 429 (rate limit do ambiente público) | Ambiente compartilhado, não é regra da API | Fora do escopo; já mitigado com `workers: 1` na ETAPA 8 |
-| **Baixa** | Latência/tempo de resposta | Não é requisito documentado | Fora do escopo |
+| **Baixa** | Latência/tempo de resposta | Não é requisito documentado | **Fora do escopo como requisito**: a ETAPA 12 adicionou uma avaliação diagnóstica isolada (`docs/performance-testing.md`), sem SLA, sem gate e fora da regressão funcional |
 | **Baixa** | Versão em execução no ambiente público não confirmada (docs fixadas em 2.22.1) | Comportamento observado pode diferir de outra build | Limitação declarada; todas as divergências foram verificadas por execução, não por suposição |
 
 ## 6. Requisitos críticos pendentes
@@ -202,25 +212,28 @@ Distribuição por arquivo (todos 100% aprovados):
 | Papel | Arquivos |
 | --- | --- |
 | Requisitos e cobertura | `docs/traceability-matrix.md`, `docs/coverage-analysis.md` |
-| Testes (15 arquivos) | `tests/health.spec.ts`, `tests/auth/login.spec.ts`, `tests/usuarios/*.spec.ts` (4), `tests/produtos/*.spec.ts` (4), `tests/carrinhos/*.spec.ts` (5) |
+| Testes (19 arquivos) | `tests/health.spec.ts`, `tests/auth/login.spec.ts`, `tests/usuarios/*.spec.ts` (4), `tests/produtos/*.spec.ts` (4), `tests/carrinhos/*.spec.ts` (5), `tests/seguranca/*.spec.ts` (2), `tests/helpers/*.spec.ts` (2) |
 | Contratos centralizados | `tests/helpers/contrato.ts` |
-| Demais helpers | `tests/helpers/{autenticacao,diagnostico,limpeza,produtos,usuarios,carrinhos}.ts` |
-| Execução | `playwright.config.ts` (`workers: 1`), `package.json` (`test`, `test:paralelo`, `typecheck`) |
-| Evidência | `test-results/results.json` |
+| Demais helpers | `tests/helpers/{autenticacao,diagnostico,latencia,limpeza,produtos,usuarios,carrinhos}.ts` |
+| Desempenho (ETAPA 12) | `tests/performance/api-latency.spec.ts`, `playwright.latencia.config.ts`, `docs/performance-testing.md` |
+| Execução | `playwright.config.ts` (`workers: 1`), `package.json` (`test`, `test:paralelo`, `test:latencia`, `typecheck`) |
+| Evidência | `playwright-report/index.html` e `performance-results/*.json` |
 
 ## 8. Comandos de verificação
 
 ```bash
-npm test              # suíte completa (144/144 na última execução)
+npm test              # suíte completa (184/184 na última execução)
+npm run test:latencia # avaliação de latência isolada (4 testes, 20 amostras)
 npm run typecheck     # tsc --noEmit sem erros
 npx playwright test tests/usuarios/usuarios-get.spec.ts   # arquivo afetado isolado
 npx playwright test -g "chave não permitida|Authorization malformado"   # cenários novos isolados
 ```
 
-Validações complementares da ETAPA 9: leitura de `results.json` para conferir
-total por arquivo e status de cada teste, conferência da matriz (99 linhas de
-requisito, 98 "Coberto e aprovado" + 1 "Fora do escopo") e varredura de
-resíduos de dados de teste na API após a execução (0 ocorrências).
+Validações complementares da ETAPA 9: leitura do relatório de execução para
+conferir total por arquivo e status de cada teste, conferência da matriz
+(99 linhas de requisito, 98 "Coberto e aprovado" + 1 "Fora do escopo") e
+varredura de resíduos de dados de teste na API após a execução (0
+ocorrências).
 
 ## 9. Limitações conhecidas
 
@@ -233,5 +246,7 @@ resíduos de dados de teste na API após a execução (0 ocorrências).
 3. A matriz cobre o que a documentação 2.22.1 declara e o que o ambiente
    demonstrou; requisitos não documentados só entram quando observados por
    execução.
-4. Não há teste de desempenho, de segurança profunda (injeção, limites de
-   tamanho de payload além dos campos documentados) nem de versionamento da API.
+4. Não há teste de desempenho com critério de aceitação (a ETAPA 12 traz uma
+   avaliação diagnóstica de latência, sem SLA e sem gate), nem de segurança
+   profunda (injeção, limites de tamanho de payload além dos campos
+   documentados) nem de versionamento da API.

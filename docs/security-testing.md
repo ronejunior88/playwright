@@ -194,5 +194,6 @@ npx playwright test tests/seguranca                        # segurança (novos)
 npx playwright test                                        # suíte completa
 ```
 
-Evidências estruturadas em `test-results/results.json`; anexos de falha
-sanitizados no relatório HTML (`npm run report`).
+Relatório HTML da execução (`npm run report`) e resumo estruturado sob demanda
+(`npx playwright test --reporter=json`); anexos de falha sanitizados no
+relatório HTML.

@@ -12,6 +12,12 @@ if (process.env.CI) {
 
 export default defineConfig({
   testDir: './tests',
+  /*
+   * A avaliacao de latencia roda em config proprio (playwright.latencia.config.ts).
+   * Fica de fora da regressao funcional para nao misturar metricas de
+   * desempenho com os resultados funcionais nem adicionar chamadas a API.
+   */
+  testIgnore: '**/performance/**',
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */

@@ -6,7 +6,7 @@ implementado e as regras de evolução da priorização.
 
 ## 1. Objetivo
 
-A suíte tem **144 testes** e leva ~2 min contra uma API pública compartilhada.
+A suíte tem **184 testes** e leva ~2 min contra uma API pública compartilhada.
 Não faz sentido executar tudo sempre: para feedback rápido em pull requests e
 para decisão de release, os cenários foram classificados por risco e agrupados
 em níveis de regressão com comandos reais e medidos.
@@ -34,10 +34,14 @@ entram na regressão completa.
 | --- | --- | --- | --- | --- |
 | **Smoke** | `npm run test:smoke` (`--grep @smoke`) | 5 | ~6 s | Sinal imediato de que a API responde, o login funciona e os contratos básicos de listagem não mudaram |
 | **Críticos** | `npm run test:criticos` (`--grep @critico`) | 25 | ~37 s | Gate de regressão de risco alto: permissões, estoque, carrinhos e persistência de CRUD |
-| **Regressão completa** | `npm test` | 144 | ~108 s | Validação integral antes de merge/release; engloba os dois grupos acima |
+| **Regressão completa** | `npm test` | 184 | ~122 s | Validação integral antes de merge/release; engloba os dois grupos acima |
 
 Todas as execuções usam `workers: 1` (a API pública limita a taxa por IP;
 ver `README.md`).
+
+> A avaliação de latência (`npm run test:latencia`) **não** faz parte de
+> nenhum desses grupos: ela roda em config próprio, é manual e não bloqueia a
+> regressão funcional. Ver `docs/performance-testing.md`.
 
 ## 4. Como a priorização é implementada
 
@@ -90,8 +94,10 @@ Verificado na suíte antes de fixar os grupos:
 
 | Grupo | Comando | Data | Resultado |
 | --- | --- | --- | --- |
-| Smoke | `npm run test:smoke` | 2026-10-21 | 5/5 aprovados, ~6 s |
-| Críticos | `npm run test:criticos` | 2026-10-21 | 25/25 aprovados, ~37 s |
-| Regressão completa | `npm test` | 2026-10-21 | 144/144 aprovados, ~108 s |
+| Smoke | `npm run test:smoke` | 2026-10-22 | 5/5 aprovados |
+| Críticos | `npm run test:criticos` | 2026-10-22 | 25/25 aprovados |
+| Regressão completa | `npm test` | 2026-10-22 | 184/184 aprovados, ~122 s |
+| Latência (manual, isolada) | `npm run test:latencia` | 2026-10-22 | 4/4 aprovados, 20 amostras, ~5 s |
 
-Evidências estruturadas em `test-results/results.json` após cada execução.
+Evidências: relatório HTML (`playwright-report/index.html`) de cada execução e,
+para a avaliação de latência, `performance-results/*.json`.

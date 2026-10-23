@@ -8,6 +8,10 @@ node_modules/
 /playwright/.cache/
 /playwright/.auth/
 
+# Mutation testing
+/.stryker-tmp/
+/reports/
+
 # Environment and secrets
 .env
 .env.*

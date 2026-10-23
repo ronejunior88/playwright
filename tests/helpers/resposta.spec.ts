@@ -68,6 +68,12 @@ test.describe('Leitura de respostas JSON', () => {
     );
   });
 
+  test('usa o contexto padrão quando nenhum é informado', async () => {
+    await expect(lerJson(respostaFalsa(500, {}), 200)).rejects.toThrow(
+      /resposta da API: status HTTP inesperado/,
+    );
+  });
+
   test('usa o contexto informado na mensagem de falha', async () => {
     await expect(
       lerJson(respostaFalsa(500, {}), 200, 'criação de usuário'),

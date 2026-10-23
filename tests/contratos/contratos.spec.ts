@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { expect, test } from '../fixtures';
 import {
   CONTRATOS,
+  ContratoDesconhecidoError,
   buscarContrato,
   filtrarContratos,
   listarContratos,
@@ -38,6 +39,15 @@ function respostaDeReferencia(contrato: Contrato) {
     contentType: contrato.contentType,
     corpo: contrato.exemploValido,
   };
+}
+
+function capturarErro(acao: () => void): Error {
+  try {
+    acao();
+  } catch (erro) {
+    return erro as Error;
+  }
+  throw new Error('esperava que a ação lançasse um erro');
 }
 
 test.describe('Registro de contratos — consistência', () => {
@@ -261,15 +271,126 @@ test.describe('Registro de contratos — verificação de respostas', () => {
   });
 });
 
+test.describe('Registro de contratos — diagnóstico e precedência', () => {
+  test('descreve status divergente no caminho e na mensagem', () => {
+    const verificacao = verificarContrato('usuarios.lista', {
+      status: 500,
+      contentType: 'application/json',
+      corpo: { quantidade: 0, usuarios: [] },
+    });
+
+    const divergencia = verificacao.incompativeis.find(
+      (item) => item.categoria === 'status-incompativel',
+    );
+
+    expect(divergencia).toBeDefined();
+    expect(divergencia!.caminho).toBe('(status)');
+    expect(divergencia!.esperado).toBe('status 200');
+    expect(divergencia!.mensagem).toContain('status 200');
+  });
+
+  test('descreve content-type divergente e ausente', () => {
+    const divergente = verificarContrato('usuarios.lista', {
+      status: 200,
+      contentType: 'text/html',
+      corpo: { quantidade: 0, usuarios: [] },
+    }).incompativeis.find(
+      (item) => item.categoria === 'content-type-incompativel',
+    );
+
+    expect(divergente).toBeDefined();
+    expect(divergente!.caminho).toBe('(content-type)');
+    expect(divergente!.esperado).toBe('content-type application/json');
+    expect(divergente!.mensagem).toContain('content-type application/json');
+    expect(divergente!.recebido).not.toBe('ausente');
+
+    const ausente = verificarContrato('usuarios.lista', {
+      status: 200,
+      contentType: null,
+      corpo: { quantidade: 0, usuarios: [] },
+    }).incompativeis.find(
+      (item) => item.categoria === 'content-type-incompativel',
+    );
+
+    expect(ausente).toBeDefined();
+    expect(ausente!.mensagem).toContain('recebido ausente');
+  });
+
+  test('descreve corpo inválido no caminho e na mensagem', () => {
+    const verificacao = verificarContrato('usuarios.item', {
+      status: 200,
+      contentType: 'application/json',
+      corpoTexto: '<html>erro</html>',
+    });
+
+    const divergencia = verificacao.incompativeis.find(
+      (item) => item.categoria === 'estrutura-incompativel',
+    );
+
+    expect(divergencia).toBeDefined();
+    expect(divergencia!.caminho).toBe('(corpo)');
+    expect(divergencia!.esperado).toBe('JSON válido');
+    expect(divergencia!.mensagem).toContain('esperado JSON válido');
+  });
+
+  test('prioriza o corpo já convertido sobre o texto bruto', () => {
+    const verificacao = verificarContrato('usuarios.lista', {
+      status: 200,
+      contentType: 'application/json',
+      corpo: { quantidade: 0, usuarios: [] },
+      corpoTexto: 'conteúdo que não é JSON',
+    });
+
+    expect(verificacao.divergencias).toEqual([]);
+    expect(verificacao.valido).toBe(true);
+  });
+
+  test('não valida corpo quando a resposta não informa conteúdo', () => {
+    const verificacao = verificarContrato('usuarios.lista', {
+      status: 200,
+      contentType: 'application/json',
+    });
+
+    expect(verificacao.divergencias).toEqual([]);
+    expect(verificacao.valido).toBe(true);
+  });
+
+  test('separa divergências incompatíveis das compatíveis', () => {
+    const verificacao = verificarContrato('usuarios.item', {
+      status: 200,
+      contentType: 'application/json',
+      corpo: {
+        _id: 'a1b2c3d4e5f6g7h8',
+        nome: 'Exemplo',
+        email: 'exemplo@example.com',
+        password: 'senha-ficticia',
+        administrador: true,
+        campoNovo: 'valor',
+      },
+    });
+
+    expect(verificacao.incompativeis.map((item) => item.categoria)).toEqual([
+      'tipo-incompativel',
+    ]);
+    expect(verificacao.compativeis.map((item) => item.categoria)).toEqual([
+      'campo-adicional',
+    ]);
+    expect(verificacao.divergencias).toHaveLength(2);
+    expect(verificacao.valido).toBe(false);
+  });
+});
+
 test.describe('Registro de contratos — consultas', () => {
   test('buscarContrato devolve o contrato solicitado', () => {
     expect(buscarContrato('login.sucesso').metodo).toBe('POST');
   });
 
-  test('buscarContrato falha para identificador desconhecido', () => {
-    expect(() => buscarContrato('contrato.inexistente')).toThrow(
-      /Contrato desconhecido/,
-    );
+  test('buscarContrato falha com erro tipado para identificador desconhecido', () => {
+    const erro = capturarErro(() => buscarContrato('contrato.inexistente'));
+
+    expect(erro).toBeInstanceOf(ContratoDesconhecidoError);
+    expect(erro.name).toBe('ContratoDesconhecidoError');
+    expect(erro.message).toContain('Contrato desconhecido');
   });
 
   test('listarContratos devolve todos os contratos registrados', () => {
@@ -288,11 +409,45 @@ test.describe('Registro de contratos — consultas', () => {
     expect(
       confirmados.every((contrato) => contrato.situacao === 'confirmado'),
     ).toBe(true);
+
+    expect(filtrarContratos({ situacao: 'divergente' })).toEqual([]);
+  });
+
+  test('filtrarContratos filtra por endpoint, autenticação e fonte', () => {
+    const porEndpoint = filtrarContratos({
+      metodo: 'GET',
+      endpoint: '/produtos',
+    });
+
+    expect(porEndpoint.length).toBeGreaterThan(0);
+    expect(
+      porEndpoint.every(
+        (contrato) =>
+          contrato.metodo === 'GET' && contrato.endpoint === '/produtos',
+      ),
+    ).toBe(true);
+
+    const comToken = filtrarContratos({ autenticacao: 'token' });
+
+    expect(comToken.length).toBeGreaterThan(0);
+    expect(
+      comToken.every((contrato) => contrato.autenticacao === 'token'),
+    ).toBe(true);
+
+    const observados = filtrarContratos({ fonte: 'observado' });
+
+    expect(observados.length).toBeGreaterThan(0);
+    expect(
+      observados.every((contrato) => contrato.fonte === 'observado'),
+    ).toBe(true);
   });
 
   test('tipoMime extrai o tipo do cabeçalho content-type', () => {
     expect(tipoMime('application/json; charset=utf-8')).toBe('application/json');
     expect(tipoMime('APPLICATION/JSON')).toBe('application/json');
+    expect(tipoMime('  Application/JSON ; charset=utf-8  ')).toBe(
+      'application/json',
+    );
     expect(tipoMime(null)).toBeNull();
   });
 });

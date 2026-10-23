@@ -12,6 +12,8 @@
     "test:latencia": "playwright test --config=playwright.latencia.config.ts",
     "test:contratos": "playwright test tests/contratos/schema.spec.ts tests/contratos/contratos.spec.ts",
     "test:contratos:api": "playwright test tests/contratos/contratos-api.spec.ts",
+    "test:impacto": "playwright test tests/impacto",
+    "impacto": "node scripts/selecionar-testes.js",
     "test:mutacao": "stryker run",
     "typecheck": "tsc --noEmit",
     "report": "playwright show-report"

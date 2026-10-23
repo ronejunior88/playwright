@@ -26,6 +26,8 @@ npm run test:criticos # apenas os 25 testes de risco alto (@critico)
 npm run test:latencia # avaliação isolada de latência da API (GET, 20 amostras)
 npm run test:contratos      # contratos: motor + registro (78 testes, sem rede)
 npm run test:contratos:api  # contratos: integração com a API (25 testes)
+npm run test:impacto  # análise de impacto: 40 testes da seleção (sem rede)
+npm run impacto -- --arquivos changed-files.txt  # analisa um diff do Git
 npm run test:mutacao  # mutation testing local com Stryker (~19 min, sem rede)
 npm run typecheck     # checagem de tipos (tsc --noEmit)
 npm run report        # abre o relatório HTML da última execução
@@ -43,7 +45,7 @@ npx playwright test -g "login"             # por título
 
 | Script               | Descrição                                                    |
 | -------------------- | ------------------------------------------------------------ |
-| `npm test`           | Regressão completa: 312 testes (1 worker).                   |
+| `npm test`           | Regressão completa: 352 testes (1 worker).                   |
 | `npm run test:api`   | Alias de `npm test` (a suíte inteira é API).                 |
 | `npm run test:smoke` | Smoke: 5 testes (`--grep @smoke`), ~6 s.                     |
 | `npm run test:criticos` | Risco alto: 25 testes (`--grep @critico`), ~37 s.         |
@@ -51,6 +53,8 @@ npx playwright test -g "login"             # por título
 | `npm run test:latencia` | Latência da API: config e suíte isoladas, ~5 s.            |
 | `npm run test:contratos` | Contratos: motor e registro, 78 testes **sem rede**, ~2 s. |
 | `npm run test:contratos:api` | Contratos contra a API real, 25 testes, ~18 s.        |
+| `npm run test:impacto` | Seleção por impacto: 40 testes, **sem rede**, ~1 s.        |
+| `npm run impacto` | Analisa um diff e indica modo, nível e testes afetados.   |
 | `npm run test:mutacao` | Mutation testing (Stryker): 5 arquivos, ~19 min, **sem rede**. |
 | `npm run typecheck`  | Verifica os tipos com TypeScript.                            |
 | `npm run report`     | Abre o relatório HTML.                                       |
@@ -69,7 +73,9 @@ contratos da API está em
 duplicação/tipagem da suíte, com as decisões de escopo, está em
 [`docs/code-quality.md`](docs/code-quality.md); e a avaliação da força dos
 testes (mutation testing) está em
-[`docs/mutation-testing.md`](docs/mutation-testing.md).
+[`docs/mutation-testing.md`](docs/mutation-testing.md); e a análise de impacto
+com seleção de testes está em
+[`docs/change-impact-analysis.md`](docs/change-impact-analysis.md).
 
 ## Estrutura
 
@@ -78,6 +84,11 @@ contracts/                       # motor e registro de contratos (sem dependênc
   schema.ts                      # validador de schemas e classificação de divergências
   contratos.ts                   # registro dos 25 contratos da API (fonte da verdade)
   index.ts                       # API pública: buscar/verificar/listar contratos
+scripts/
+  selecionar-testes.js           # CLI de análise de impacto (diff → validações)
+  impacto/
+    projeto.js                   # grafo de imports e dependentes por spec
+    selecao.js                   # regras puras de seleção e fallback
 tests/
   fixtures.ts                 # test/expect estendidos (evidência automática de API)
   health.spec.ts              # health check da API
@@ -94,6 +105,8 @@ tests/
     contratos-api.spec.ts    # contratos contra a API real (25 testes)
   performance/                # avaliação isolada de latência (fora da regressão)
     api-latency.spec.ts
+  impacto/
+    selecao.spec.ts           # testes da análise de impacto (40, sem rede)
   helpers/                    # utilitários reutilizados pelos testes
     autenticacao.ts           # login, bearer() e mensagens de autenticação
     aleatorio.ts              # geração de sufixo aleatório (dados únicos)
@@ -120,6 +133,7 @@ docs/
   api-contracts.md            # catálogo de contratos e divergências (ETAPA 13)
   code-quality.md             # duplicação, tipagem e decisões de escopo (ETAPA 14)
   mutation-testing.md         # força dos testes via Stryker (ETAPA 15)
+  change-impact-analysis.md   # análise de impacto e seleção de testes (ETAPA 16)
 stryker.conf.json             # configuração do mutation testing
 playwright.latencia.config.ts # config isolado da suíte de desempenho
 ```
@@ -210,7 +224,7 @@ e [`docs/coverage-analysis.md`](docs/coverage-analysis.md).
   - `--workers=2` (~20 req/s): o `GET /usuarios` do próprio *health check*
     (apenas leitura) já retorna **HTTP 429** — é limite de taxa, não contenção
     de dados.
-  - `--workers=1` (~10 req/s): suíte inteira **312 passed / 0 failed**.
+  - `--workers=1` (~10 req/s): suíte inteira **352 passed / 0 failed**.
 - Por isso o padrão é `workers: 1` (local e CI). `npm run test:paralelo`
   mantém o modo rápido disponível para quando o ambiente permitir.
 - Se uma execução receber **429**, trate como **condição do ambiente**: limpe os
@@ -221,30 +235,24 @@ e [`docs/coverage-analysis.md`](docs/coverage-analysis.md).
 
 ## Relatórios
 
-A configuração atual (`playwright.config.ts`) gera o **relatório HTML**:
+A configuração atual (`playwright.config.ts`) gera três saídas:
 
 | Reporter | Saída | Uso |
 | -------- | ----- | --- |
+| `list`   | terminal | progresso e resultado de cada teste |
 | `html`   | `playwright-report/index.html` | navegação visual por teste, duração, tentativas e anexos |
+| `json`   | `test-results/results.json` | resumo estruturado (total, aprovados, falhos, ignorados, instáveis e duração) |
 
-O relatório HTML abre automaticamente ao final da execução quando há terminal
-associado (`open: 'always'`); em ambiente sem TTY — como o CI — ele apenas é
-gerado. Para abrir manualmente:
+O HTML não abre automaticamente (`open: 'never'`), para não interferir em
+execuções locais e no CI. Para abrir manualmente:
 
 ```bash
 npm run report          # equivale a npx playwright show-report
 ```
 
-Para obter o resumo estruturado da execução (total, aprovados, falhos,
-ignorados, instáveis e duração), gere o reporter JSON sob demanda:
-
-```bash
-npx playwright test --reporter=json
-```
-
-Os diretórios `playwright-report/`, `test-results/` e `performance-results/`
-são gerados automaticamente e estão no `.gitignore` (não são versionados).
-O JSON de execução, quando gerado, conterá entre outros campos `stats` com o
+Os diretórios `playwright-report/`, `test-results/`, `performance-results/` e
+`reports/` são gerados automaticamente e estão no `.gitignore` (não são
+versionados). O JSON de execução contém entre outros campos `stats` com o
 resumo da execução e a lista de `suites` com o status de cada teste.
 
 A suíte de latência usa config próprio (`playwright.latencia.config.ts`) com
@@ -312,28 +320,46 @@ histórico de requisições — sem imprimir os valores sensíveis no terminal.
 O workflow `.github/workflows/playwright.yml` roda a cada `push` e
 `pull_request` na branch `Estudos` (e também via `workflow_dispatch`):
 
-1. instala dependências com `npm ci` (cache do npm);
+1. faz checkout com histórico completo (`fetch-depth: 0`) e instala
+   dependências com `npm ci` (cache do npm);
 2. roda `npm run typecheck`;
 3. roda `npm run test:contratos` (78 testes locais do motor e do registro —
    **sem rede**, falha rápido se um contrato for quebrado);
-4. roda `npm run test:smoke` (5 testes);
-5. roda `npm run test:criticos` (25 testes);
-6. roda a suíte completa com `npx playwright test`;
-7. publica os artefatos (`playwright-report/` e `test-results/results.json`)
-   com `if: always()`, mesmo quando os testes falham.
+4. calcula o diff de commits e executa o seletor de impacto:
+   - `push`: `github.event.before` → `github.sha`;
+   - `pull_request`: `merge-base` entre a base e o head → head;
+   - `workflow_dispatch`: completa por padrão (`execucao=completa`); `auto`
+     exige uma base informada.
+5. falha de base, diff ou seletor cai em regressão completa com aviso — nunca
+   em execução vazia;
+6. modo `direcionada` executa apenas os specs afetados (e a suíte de latência
+   quando aplicável);
+7. modo `completa` executa `npm run test:smoke`, `npm run test:criticos` e
+   `npx playwright test`;
+8. publica os artefatos (`playwright-report/`, `test-results/results.json`,
+   `reports/impacto/selecao.json` e `changed-files.txt`) com `if: always()`,
+   mesmo quando os testes falham, e registra o resumo no *step summary*.
 
-O job mantém o status de falha real (sem `continue-on-error`), usa apenas
-`permissions: contents: read`, não faz commits/push e não publica relatórios
-publicamente (apenas como artefato da execução). Não há instalação de
-navegadores, pois a suíte é 100% API.
+O passo de seleção tem `continue-on-error: true` e fallback conservador: se o
+cálculo do diff ou o seletor falhar, ele registra o modo `completa` com um aviso
+(inclusive por saída emergencial em bash, se o próprio Node falhar) e os passos
+de regressão completa rodam pelo `outcome == 'failure'`. O job usa apenas
+`permissions: contents: read`, não faz commits/push e
+não publica relatórios publicamente (apenas como artefato da execução). Não há
+instalação de navegadores, pois a suíte é 100% API.
 
 Para baixar os relatórios no GitHub: na execução do workflow, seção
-**Artifacts** → `playwright-report` (contém o HTML e o `results.json`).
+**Artifacts** → `playwright-report` (contém o HTML, o `results.json`, o JSON da
+seleção e a lista de arquivos alterados).
 
-### Por que a avaliação de latência não roda no CI
+A análise detalhada, os critérios e as limitações estão em
+[`docs/change-impact-analysis.md`](docs/change-impact-analysis.md).
 
-A suíte de desempenho é **executada sob demanda** (`npm run test:latencia`),
-fora do pipeline, porque: (a) a API é pública e compartilhada, então o número
+### Por que a avaliação de latência não faz parte da regressão padrão
+
+A suíte de desempenho é **executada sob demanda** (`npm run test:latencia`) ou
+quando o diff altera `tests/performance/**`. Ela não entra na regressão
+funcional padrão porque: (a) a API é pública e compartilhada, então o número
 medido depende da carga de terceiros e não é comparável entre execuções;
 (b) somar as 21 leituras ao pipeline aumenta o risco de **429** na regressão
 funcional; e (c) não existe SLA, logo o resultado não tem valor de gate. O

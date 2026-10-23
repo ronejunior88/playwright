@@ -6,10 +6,16 @@ implementado e as regras de evolução da priorização.
 
 ## 1. Objetivo
 
-A suíte tem **265 testes** e leva ~2,3 min contra uma API pública compartilhada.
-Não faz sentido executar tudo sempre: para feedback rápido em pull requests e
-para decisão de release, os cenários foram classificados por risco e agrupados
-em níveis de regressão com comandos reais e medidos.
+Na ETAPA 10, a suíte tinha **265 testes** e levava ~2,3 min contra uma API
+pública compartilhada. Não faz sentido executar tudo sempre: para feedback
+rápido em pull requests e para decisão de release, os cenários foram
+classificados por risco e agrupados em níveis de regressão com comandos reais e
+medidos.
+
+> A partir da ETAPA 16, a seleção por impacto complementa esta estratégia:
+> mudanças localizadas executam apenas os specs afetados, enquanto smoke,
+> críticos e a regressão completa continuam disponíveis e são acionados na
+> dúvida. Ver [`change-impact-analysis.md`](change-impact-analysis.md).
 
 ## 2. Classificação de risco
 

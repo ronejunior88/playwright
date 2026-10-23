@@ -32,6 +32,12 @@ ServeRest ao cenário automatizado que o verifica.
 > de consistência do registro e 25 de integração com a API). Eles não criam
 > requisitos novos: verificam a **forma** das respostas já mapeadas acima e
 > estão documentados em `docs/api-contracts.md`.
+>
+> A ETAPA 16 acrescentou 40 testes da **estratégia de seleção por impacto**
+> (`tests/impacto/selecao.spec.ts`). Eles também não criam requisitos de API:
+> validam a ferramenta que escolhe quais specs executar. A análise e os
+> critérios estão em `docs/change-impact-analysis.md`; os números de testes e
+> arquivos das ETAPAs 9–13 acima são históricos e não foram reescritos.
 
 Método: leitura direta da documentação (HTML da versão publicada), inventário de
 endpoints e respostas, comparação com os títulos reais dos testes da suíte e

@@ -6,6 +6,16 @@ on:
   pull_request:
     branches: [ Estudos ]
   workflow_dispatch:
+    inputs:
+      execucao:
+        description: 'auto usa o diff informado; completa ignora o diff'
+        type: choice
+        options: [ auto, completa ]
+        default: completa
+      base:
+        description: 'SHA base opcional para execucao=auto'
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -16,6 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: lts/*
@@ -26,11 +38,140 @@ jobs:
         run: npm run typecheck
       - name: Contract tests (local, sem rede)
         run: npm run test:contratos
+      - name: Selecionar validações por impacto
+        id: impacto
+        continue-on-error: true
+        shell: bash
+        env:
+          EVENTO: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          BASE_PR: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.sha }}
+          FORCAR: ${{ github.event.inputs.execucao }}
+          BASE_MANUAL: ${{ github.event.inputs.base }}
+        run: |
+          set -uo pipefail
+
+          completa() {
+            node scripts/selecionar-testes.js \
+              --completa \
+              --motivo "$1" \
+              --github-output \
+              --saida-json reports/impacto/selecao.json
+          }
+
+          saida_emergencial() {
+            local motivo="$1"
+            local limpo="${motivo//$'\n'/ }"
+            {
+              echo "modo=completa"
+              echo "nivel=C"
+              echo "testes="
+              echo "latencia=false"
+              echo "motivos=$limpo"
+              echo "avisos=seletor indisponivel; fallback conservador aplicado"
+              echo "completa_por=$limpo"
+            } >> "$GITHUB_OUTPUT"
+          }
+
+          falha_conservadora() {
+            local motivo="$1"
+            echo "::warning::$motivo"
+            if ! completa "$motivo"; then
+              saida_emergencial "$motivo"
+            fi
+            exit 0
+          }
+
+          if [ "$EVENTO" = "workflow_dispatch" ] && [ "${FORCAR:-}" != "auto" ]; then
+            completa "execução manual solicitou regressão completa"
+            exit 0
+          fi
+
+          base=""
+          if [ "$EVENTO" = "pull_request" ]; then
+            base="${BASE_PR:-}"
+            if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+              falha_conservadora "base do pull request indisponível; regressão completa por precaução"
+            fi
+            if ! base="$(git merge-base "$base" "$HEAD" 2>/dev/null)"; then
+              falha_conservadora "não foi possível calcular o merge-base do pull request; regressão completa por precaução"
+            fi
+          elif [ "$EVENTO" = "workflow_dispatch" ]; then
+            base="${BASE_MANUAL:-}"
+            if [ -z "$base" ]; then
+              falha_conservadora "execução manual em modo auto sem base informada; regressão completa por precaução"
+            fi
+            if ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+              falha_conservadora "base informada não existe no repositório; regressão completa por precaução"
+            fi
+            if ! base="$(git merge-base "$base" "$HEAD" 2>/dev/null)"; then
+              falha_conservadora "não foi possível calcular o merge-base da base informada; regressão completa por precaução"
+            fi
+          else
+            base="${BEFORE:-}"
+            if [ -z "$base" ] || printf '%s' "$base" | grep -Eq '^0+$'; then
+              falha_conservadora "base do push indisponível (branch novo ou histórico reescrito); regressão completa por precaução"
+            fi
+            if ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+              falha_conservadora "base do push não existe no repositório; regressão completa por precaução"
+            fi
+            if ! git merge-base --is-ancestor "$base" "$HEAD"; then
+              falha_conservadora "base do push não é ancestral do commit atual; regressão completa por precaução"
+            fi
+          fi
+
+          rm -f changed-files.txt
+          if ! git diff --name-status -M "$base" "$HEAD" > changed-files.txt; then
+            falha_conservadora "não foi possível calcular o diff de $base até $HEAD; regressão completa por precaução"
+          fi
+
+          if ! node scripts/selecionar-testes.js \
+            --arquivos changed-files.txt \
+            --github-output \
+            --saida-json reports/impacto/selecao.json; then
+            falha_conservadora "falha ao executar o seletor de testes; regressão completa por precaução"
+          fi
+      - name: Resumo da seleção de impacto
+        if: always()
+        shell: bash
+        env:
+          MODO: ${{ steps.impacto.outputs.modo }}
+          NIVEL: ${{ steps.impacto.outputs.nivel }}
+          TESTES: ${{ steps.impacto.outputs.testes }}
+          LATENCIA: ${{ steps.impacto.outputs.latencia }}
+          MOTIVOS: ${{ steps.impacto.outputs.motivos }}
+          AVISOS: ${{ steps.impacto.outputs.avisos }}
+        run: |
+          {
+            echo "## Seleção de testes por impacto"
+            echo ""
+            echo "- Modo: ${MODO:-indisponível}"
+            echo "- Nível: ${NIVEL:-indisponível}"
+            echo "- Suíte de latência: ${LATENCIA:-false}"
+            echo "- Testes selecionados: ${TESTES:-nenhum}"
+            echo "- Motivos: ${MOTIVOS:-não informados}"
+            echo "- Avisos: ${AVISOS:-nenhum}"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Testes direcionados por impacto
+        if: success() && steps.impacto.outcome != 'failure' && steps.impacto.outputs.modo == 'direcionada' && steps.impacto.outputs.testes != ''
+        shell: bash
+        env:
+          TESTES_SELECIONADOS: ${{ steps.impacto.outputs.testes }}
+        run: |
+          read -ra TESTES <<< "$TESTES_SELECIONADOS"
+          npx playwright test "${TESTES[@]}"
+      - name: Latência (suíte isolada)
+        if: success() && steps.impacto.outcome != 'failure' && steps.impacto.outputs.latencia == 'true'
+        run: npm run test:latencia
       - name: Smoke tests
+        if: steps.impacto.outcome == 'failure' || (success() && (steps.impacto.outputs.modo == 'completa' || steps.impacto.outputs.modo == ''))
         run: npm run test:smoke
       - name: Critical tests
+        if: steps.impacto.outcome == 'failure' || (success() && (steps.impacto.outputs.modo == 'completa' || steps.impacto.outputs.modo == ''))
         run: npm run test:criticos
       - name: Run Playwright API tests
+        if: steps.impacto.outcome == 'failure' || (success() && (steps.impacto.outputs.modo == 'completa' || steps.impacto.outputs.modo == ''))
         run: npx playwright test
       - name: Upload Playwright report
         if: always()
@@ -40,5 +181,7 @@ jobs:
           path: |
             playwright-report/
             test-results/results.json
+            reports/impacto/selecao.json
+            changed-files.txt
           if-no-files-found: ignore
           retention-days: 30

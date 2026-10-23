@@ -24,8 +24,9 @@ npm run test:api      # alias para toda a suíte (100% API)
 npm run test:smoke    # apenas os 5 testes de smoke (@smoke)
 npm run test:criticos # apenas os 25 testes de risco alto (@critico)
 npm run test:latencia # avaliação isolada de latência da API (GET, 20 amostras)
-npm run test:contratos      # contratos: motor + registro (56 testes, sem rede)
+npm run test:contratos      # contratos: motor + registro (78 testes, sem rede)
 npm run test:contratos:api  # contratos: integração com a API (25 testes)
+npm run test:mutacao  # mutation testing local com Stryker (~19 min, sem rede)
 npm run typecheck     # checagem de tipos (tsc --noEmit)
 npm run report        # abre o relatório HTML da última execução
 ```
@@ -42,14 +43,15 @@ npx playwright test -g "login"             # por título
 
 | Script               | Descrição                                                    |
 | -------------------- | ------------------------------------------------------------ |
-| `npm test`           | Regressão completa: 272 testes (1 worker).                   |
+| `npm test`           | Regressão completa: 312 testes (1 worker).                   |
 | `npm run test:api`   | Alias de `npm test` (a suíte inteira é API).                 |
 | `npm run test:smoke` | Smoke: 5 testes (`--grep @smoke`), ~6 s.                     |
 | `npm run test:criticos` | Risco alto: 25 testes (`--grep @critico`), ~37 s.         |
 | `npm run test:paralelo` | Executa com 2 workers (mais rápido, pode receber **429**). |
 | `npm run test:latencia` | Latência da API: config e suíte isoladas, ~5 s.            |
-| `npm run test:contratos` | Contratos: motor e registro, 56 testes **sem rede**, ~1 s. |
+| `npm run test:contratos` | Contratos: motor e registro, 78 testes **sem rede**, ~2 s. |
 | `npm run test:contratos:api` | Contratos contra a API real, 25 testes, ~18 s.        |
+| `npm run test:mutacao` | Mutation testing (Stryker): 5 arquivos, ~19 min, **sem rede**. |
 | `npm run typecheck`  | Verifica os tipos com TypeScript.                            |
 | `npm run report`     | Abre o relatório HTML.                                       |
 
@@ -63,9 +65,11 @@ sanitização de logs) está em
 latência da API está em
 [`docs/performance-testing.md`](docs/performance-testing.md); o catálogo de
 contratos da API está em
-[`docs/api-contracts.md`](docs/api-contracts.md); e o diagnóstico de
+[`docs/api-contracts.md`](docs/api-contracts.md); o diagnóstico de
 duplicação/tipagem da suíte, com as decisões de escopo, está em
-[`docs/code-quality.md`](docs/code-quality.md).
+[`docs/code-quality.md`](docs/code-quality.md); e a avaliação da força dos
+testes (mutation testing) está em
+[`docs/mutation-testing.md`](docs/mutation-testing.md).
 
 ## Estrutura
 
@@ -85,8 +89,8 @@ tests/
   usuarios/                   # GET/POST/PUT/DELETE /usuarios
   carrinhos/                  # GET/POST e conclusão/cancelamento de compra
   contratos/                 # testes dos contratos da API
-    schema.spec.ts           # motor de schemas (35 testes, sem rede)
-    contratos.spec.ts        # consistência do registro (21 testes, sem rede)
+    schema.spec.ts           # motor de schemas (50 testes, sem rede)
+    contratos.spec.ts        # consistência do registro (28 testes, sem rede)
     contratos-api.spec.ts    # contratos contra a API real (25 testes)
   performance/                # avaliação isolada de latência (fora da regressão)
     api-latency.spec.ts
@@ -115,6 +119,8 @@ docs/
   performance-testing.md      # avaliação de latência da API (ETAPA 12)
   api-contracts.md            # catálogo de contratos e divergências (ETAPA 13)
   code-quality.md             # duplicação, tipagem e decisões de escopo (ETAPA 14)
+  mutation-testing.md         # força dos testes via Stryker (ETAPA 15)
+stryker.conf.json             # configuração do mutation testing
 playwright.latencia.config.ts # config isolado da suíte de desempenho
 ```
 
@@ -127,7 +133,7 @@ divergência como **incompatível** (quebra de contrato) ou **compatível** (cam
 novo, que não reprova a suíte).
 
 - `npm run test:contratos` roda a suíte local do motor e do registro
-  (**56 testes, sem rede**) — é a checagem que detecta mudança de contrato em
+  (**78 testes, sem rede**) — é a checagem que detecta mudança de contrato em
   tempo de build.
 - `npm run test:contratos:api` roda a integração com a API real
   (**25 testes**), confirmando cada contrato registrado contra a API pública.
@@ -204,7 +210,7 @@ e [`docs/coverage-analysis.md`](docs/coverage-analysis.md).
   - `--workers=2` (~20 req/s): o `GET /usuarios` do próprio *health check*
     (apenas leitura) já retorna **HTTP 429** — é limite de taxa, não contenção
     de dados.
-  - `--workers=1` (~10 req/s): suíte inteira **265 passed / 0 failed**.
+  - `--workers=1` (~10 req/s): suíte inteira **312 passed / 0 failed**.
 - Por isso o padrão é `workers: 1` (local e CI). `npm run test:paralelo`
   mantém o modo rápido disponível para quando o ambiente permitir.
 - Se uma execução receber **429**, trate como **condição do ambiente**: limpe os
@@ -308,7 +314,7 @@ O workflow `.github/workflows/playwright.yml` roda a cada `push` e
 
 1. instala dependências com `npm ci` (cache do npm);
 2. roda `npm run typecheck`;
-3. roda `npm run test:contratos` (56 testes locais do motor e do registro —
+3. roda `npm run test:contratos` (78 testes locais do motor e do registro —
    **sem rede**, falha rápido se um contrato for quebrado);
 4. roda `npm run test:smoke` (5 testes);
 5. roda `npm run test:criticos` (25 testes);

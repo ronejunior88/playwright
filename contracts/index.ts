@@ -103,7 +103,7 @@ export function verificarContrato(
       criarDivergencia(
         '(content-type)',
         `content-type ${mimeEsperado}`,
-        resposta.contentType ?? 'ausente',
+        resposta.contentType === null ? undefined : resposta.contentType,
         'content-type-incompativel',
       ),
     );

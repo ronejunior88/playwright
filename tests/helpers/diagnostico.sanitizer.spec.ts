@@ -43,6 +43,53 @@ test.describe('Sanitizador de diagnóstico', () => {
     expect(saida.campoNormal).toBe('valor-publico');
   });
 
+  test('reconhece todas as chaves sensíveis declaradas', () => {
+    const chaves = [
+      'authorization',
+      'auth',
+      'password',
+      'senha',
+      'token',
+      'access_token',
+      'accesstoken',
+      'refresh_token',
+      'secret',
+      'apikey',
+      'api_key',
+      'cookie',
+      'set-cookie',
+      'x-access-token',
+    ];
+    const entrada = Object.fromEntries(
+      chaves.map((chave) => [chave, SEGREDO_TEXTO]),
+    );
+
+    const saida = sanitizar(entrada) as Record<string, unknown>;
+
+    for (const chave of chaves) {
+      expect(saida[chave], `${chave} deve ser mascarado`).toBe(MARCADOR);
+    }
+  });
+
+  test('sanitiza strings recebidas diretamente', () => {
+    expect(sanitizar(`Bearer ${SEGREDO_TEXTO}`)).toBe('Bearer [REDACTED]');
+  });
+
+  test('mascara Bearer com espaçamento variável', () => {
+    expect(sanitizarTexto(`Bearer   ${SEGREDO_TEXTO}`)).toBe(
+      'Bearer [REDACTED]',
+    );
+    expect(sanitizarTexto(`BEARER\t${SEGREDO_TEXTO}`)).toBe(
+      'Bearer [REDACTED]',
+    );
+  });
+
+  test('mascara o JWT completo sem deixar fragmentos', () => {
+    expect(sanitizarTexto(`token ${TOKEN_JWT_FALSO} fim`)).toBe(
+      'token [REDACTED] fim',
+    );
+  });
+
   test('reconhece chaves sensíveis sem diferenciar maiúsculas/minúsculas', () => {
     const entrada = {
       Authorization: `Bearer ${SEGREDO_TEXTO}`,
@@ -83,6 +130,7 @@ test.describe('Sanitizador de diagnóstico', () => {
     ];
 
     const saida = sanitizar(entrada) as Array<Record<string, unknown>>;
+    expect(Array.isArray(saida)).toBe(true);
     expect(saida[0]).toEqual({ metodo: 'GET', status: 200 });
     expect(saida[1].authorization).toBe(MARCADOR);
   });

@@ -12,6 +12,7 @@
     "test:latencia": "playwright test --config=playwright.latencia.config.ts",
     "test:contratos": "playwright test tests/contratos/schema.spec.ts tests/contratos/contratos.spec.ts",
     "test:contratos:api": "playwright test tests/contratos/contratos-api.spec.ts",
+    "test:mutacao": "stryker run",
     "typecheck": "tsc --noEmit",
     "report": "playwright show-report"
   },
@@ -29,6 +30,7 @@
   "homepage": "https://github.com/ronejunior88/playwright#readme",
   "devDependencies": {
     "@playwright/test": "^1.60.0",
+    "@stryker-mutator/core": "^10.0.0",
     "@types/node": "^25.9.2",
     "typescript": "^7.0.2"
   }

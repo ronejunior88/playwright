@@ -229,8 +229,9 @@ Limitações conhecidas:
   mas reduz o ganho da seleção;
 - a decisão é por arquivo: um helper grande pode afetar muitos specs;
 - o limiar de 60% é uma heurística, não uma medição histórica de risco;
-- o workflow não foi executado no GitHub Actions nesta etapa; a validação foi
-  estática e local, e não há alegação de execução remota;
+- a ETAPA 12 validou o workflow de forma estática e local; a primeira execução
+  remota foi comprovada na ETAPA 19 (run `40757900849`, sucesso), incluindo o
+  fallback conservador para a suíte completa;
 - o modo `auto` em execução manual depende de uma base informada.
 
 Recomendações futuras (não implementadas):

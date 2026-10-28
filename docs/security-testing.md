@@ -10,6 +10,11 @@ observados na API pública `https://serverest.dev`.
 > exploração de infraestrutura ou operações destrutivas. Este documento **não**
 > afirma conformidade com OWASP ou qualquer norma: a avaliação cobre apenas os
 > cenários abaixo.
+>
+> **Nota ETAPA 19 (2026-10-28):** as contagens de 32 testes são históricas da
+> ETAPA 11. Na suíte atual, os specs de segurança (`tests/seguranca/**`) somam
+> 14 testes, o sanitizador/classificação soma 16 e o login soma 10; a execução
+> validada está em [`integrated-quality-audit.md`](integrated-quality-audit.md).
 
 ## 1. Escopo
 

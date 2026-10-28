@@ -234,12 +234,11 @@ test.describe('Atualização de produtos - PUT /produtos/{_id}', () => {
     expect(body.message).toBe(MENSAGEM_CADASTRO_SUCESSO);
     expect(typeof body._id).toBe('string');
     expect(body._id!.length).toBeGreaterThan(0);
+    idsCriados.push(body._id!);
 
     // PUT com id inexistente cria o produto: a resposta segue o formato de
     // criação (201 + message + _id).
     await validarContrato('produtos.criacao', response);
-
-    idsCriados.push(body._id!);
 
     const consulta = await request.get(`/produtos/${body._id}`);
     const corpo = await lerJson<ProdutoApi>(consulta, 200);

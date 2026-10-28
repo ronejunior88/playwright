@@ -27,6 +27,7 @@ jobs:
     env:
       SERVE_REST_BASE_URL: ${{ vars.SERVE_REST_BASE_URL || 'https://serverest.dev' }}
       API_TIMEOUT_MS: ${{ vars.API_TIMEOUT_MS || '30000' }}
+      API_REQUEST_INTERVAL_MS: '300'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -166,6 +167,8 @@ jobs:
           npx playwright test "${TESTES[@]}"
       - name: Latência (suíte isolada)
         if: success() && steps.impacto.outcome != 'failure' && steps.impacto.outputs.latencia == 'true'
+        env:
+          API_REQUEST_INTERVAL_MS: '0'
         run: npm run test:latencia
       - name: Smoke tests
         if: steps.impacto.outcome == 'failure' || (success() && (steps.impacto.outputs.modo == 'completa' || steps.impacto.outputs.modo == ''))

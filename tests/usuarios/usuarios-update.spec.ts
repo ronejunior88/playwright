@@ -122,12 +122,11 @@ test.describe('Atualização de usuários - PUT /usuarios/{_id}', () => {
     expect(body.message).toBe(MENSAGEM_CADASTRO_SUCESSO);
     expect(typeof body._id).toBe('string');
     expect(body._id!.length).toBeGreaterThan(0);
+    idsCriados.push(body._id!);
 
     // PUT com id inexistente cria o registro: a resposta segue o formato de
     // criação (201 + message + _id), verificado pelo mesmo contrato.
     await validarContrato('usuarios.criacao', response);
-
-    idsCriados.push(body._id!);
 
     const consulta = await request.get(`/usuarios/${body._id}`);
     const corpo = await lerJson<UsuarioApi>(consulta, 200);

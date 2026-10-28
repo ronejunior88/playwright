@@ -4,6 +4,12 @@ Documento da **ETAPA 14** da evolução da suíte Playwright + TypeScript. Ele
 registra o diagnóstico da duplicação e da tipagem, o que foi refatorado e o que
 foi deliberadamente mantido como está.
 
+> **Nota ETAPA 19 (2026-10-28):** as métricas desta página são a fotografia
+> histórica da ETAPA 14 (265 testes funcionais, 272 na regressão, 56 contratos
+> locais). A suíte atual tem **384 testes em 26 arquivos** e **78 contratos
+> locais**; a validação mais recente está em
+> [`integrated-quality-audit.md`](integrated-quality-audit.md).
+
 O objetivo da etapa era **manutenibilidade sem mudança de comportamento**:
 mesmos endpoints, mesmos payloads, mesmos status, mesmas assertions, mesmo
 número de testes e mesmo isolamento. A validação final comparou a suíte antes e

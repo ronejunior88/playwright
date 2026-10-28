@@ -11,7 +11,7 @@ pública compartilhada. Não faz sentido executar tudo sempre: para feedback
 rápido em pull requests e para decisão de release, os cenários foram
 classificados por risco e agrupados em níveis de regressão com comandos reais e
 medidos. Na ETAPA 19, a suíte tem **384 testes** (26 arquivos no config
-principal) e a regressão completa levou **3,7 min** localmente e **4,9 min** no
+principal) e a regressão completa levou **3,6 min** localmente e **4,9 min** no
 CI com pacing de 300 ms.
 
 > A partir da ETAPA 16, a seleção por impacto complementa esta estratégia:
@@ -45,7 +45,7 @@ sem reclassificar os cenários históricos.
 | --- | --- | --- | --- | --- |
 | **Smoke** | `npm run test:smoke` (`--grep @smoke`) | 5 | ~6 s | Sinal imediato de que a API responde, o login funciona e os contratos básicos de listagem não mudaram |
 | **Críticos** | `npm run test:criticos` (`--grep @critico`) | 25 | ~57 s | Gate de regressão de risco alto: permissões, estoque, carrinhos e persistência de CRUD |
-| **Regressão completa** | `npm test` | 384 | ~3,7 min | Validação integral antes de merge/release; engloba os dois grupos acima |
+| **Regressão completa** | `npm test` | 384 | ~3,6 min | Validação integral antes de merge/release; engloba os dois grupos acima |
 | **Contratos (local)** | `npm run test:contratos` | 78 | ~2 s | Motor de schemas e consistência do registro — **sem rede**, roda antes de qualquer chamada à API |
 
 Todas as execuções usam `workers: 1` (a API pública limita a taxa por IP;
@@ -114,7 +114,7 @@ Verificado na suíte antes de fixar os grupos:
 | --- | --- | --- | --- |
 | Smoke | `npm run test:smoke` | 2026-10-28 | 5/5 aprovados, ~6 s |
 | Críticos | `npm run test:criticos` | 2026-10-28 | 25/25 aprovados, ~57 s |
-| Regressão completa | `npm test` | 2026-10-28 | 384/384 aprovados, 222 s |
+| Regressão completa | `npm test` | 2026-10-28 | 384/384 aprovados, 217 s |
 | CI remoto | GitHub Actions, run `40757900849` | 2026-10-28 | Sucesso: 384/384 completos em 4,9 min; 25/25 críticos, 5/5 smoke e 78/78 contratos |
 | Contratos (local, sem rede) | `npm run test:contratos` | 2026-10-28 | 78/78 aprovados, ~2 s |
 | Contratos (API real) | `npm run test:contratos:api` | 2026-10-28 | 25/25 aprovados, ~30 s |

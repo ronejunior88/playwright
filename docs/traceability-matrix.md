@@ -13,7 +13,7 @@ ServeRest ao cenário automatizado que o verifica.
 | Respostas HTTP documentadas mapeadas | 45 (somando as listas `Responses` dos 16 pontos) |
 | Requisitos rastreados nesta matriz | 99 |
 | Testes da suíte | 384 em 26 arquivos `*.spec.ts` no config principal (27 no total, incluindo performance) |
-| Última execução completa | 2026-10-28 — `npm test` — **384/384 aprovados**, 0 falhas, 0 ignorados, 0 instáveis, ~222 s |
+| Última execução completa | 2026-10-28 — `npm test` — **384/384 aprovados**, 0 falhas, 0 ignorados, 0 instáveis, ~217 s |
 | Evidência | `playwright-report/index.html` (reporter HTML) e `npx playwright test --list` → `Total: 384 tests in 26 files` |
 
 > A partir da ETAPA 11 a suíte passou a incluir 32 testes adicionais

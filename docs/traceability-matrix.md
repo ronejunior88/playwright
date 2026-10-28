@@ -12,9 +12,9 @@ ServeRest ao cenário automatizado que o verifica.
 | Pontos da API inventariados | 16 (16 combinações `método + rota`) |
 | Respostas HTTP documentadas mapeadas | 45 (somando as listas `Responses` dos 16 pontos) |
 | Requisitos rastreados nesta matriz | 99 |
-| Testes da suíte | 265 em 22 arquivos `*.spec.ts` |
-| Última execução completa | 2026-10-22 — `npm test` — **265/265 aprovados**, 0 falhas, 0 ignorados, 0 instáveis, ~138 s |
-| Evidência | `playwright-report/index.html` (reporter HTML) e `npx playwright test --list` → `Total: 265 tests in 22 files` |
+| Testes da suíte | 384 em 26 arquivos `*.spec.ts` no config principal (27 no total, incluindo performance) |
+| Última execução completa | 2026-10-28 — `npm test` — **384/384 aprovados**, 0 falhas, 0 ignorados, 0 instáveis, ~222 s |
+| Evidência | `playwright-report/index.html` (reporter HTML) e `npx playwright test --list` → `Total: 384 tests in 26 files` |
 
 > A partir da ETAPA 11 a suíte passou a incluir 32 testes adicionais
 > (sanitizador, exposição de dados/erros, validações de entrada e cenários de
@@ -43,6 +43,13 @@ ServeRest ao cenário automatizado que o verifica.
 > dados** e 3 cenários de impacto para `.nvmrc`, `tests/helpers/configuracao.ts`
 > e `.env.example`. Eles também não criam requisitos de API; as decisões estão
 > em `docs/test-data-and-environments.md`.
+>
+> **Nota ETAPA 19 (2026-10-28):** a suíte atual tem **384 testes em 26
+> arquivos** no config principal (mais 4 testes de latência em config isolado),
+> **25 críticos**, **5 smoke**, **359 sem tag**, **78 contratos locais** e **43
+> testes de impacto**. Os requisitos de API continuam sendo 99; os testes
+> adicionados pelas etapas 11–18 não criaram requisitos novos, apenas
+> verificações de segurança, contrato, desempenho, qualidade e seleção.
 
 Método: leitura direta da documentação (HTML da versão publicada), inventário de
 endpoints e respostas, comparação com os títulos reais dos testes da suíte e

@@ -89,19 +89,29 @@ test.describe('Contratos da API — usuários', () => {
   });
 
   test('criação de usuário cumpre o contrato', async ({ request }) => {
-    const resposta = await request.post('/usuarios', {
-      data: {
-        nome: gerarNomeUnico('Usuário Contrato'),
-        email: gerarEmailUnico('usuario-contrato'),
-        password: SENHA_PADRAO,
-        administrador: 'false',
-      },
-    });
+    let usuarioId = '';
 
-    await validarContrato('usuarios.criacao', resposta);
+    try {
+      const resposta = await request.post('/usuarios', {
+        data: {
+          nome: gerarNomeUnico('Usuário Contrato'),
+          email: gerarEmailUnico('usuario-contrato'),
+          password: SENHA_PADRAO,
+          administrador: 'false',
+        },
+      });
 
-    const corpo = await lerJson<MensagemResposta>(resposta, 201);
-    await excluirUsuario(request, corpo._id!);
+      const corpo = (await resposta
+        .json()
+        .catch(() => null)) as MensagemResposta | null;
+      usuarioId = corpo?._id ?? '';
+
+      await validarContrato('usuarios.criacao', resposta);
+    } finally {
+      if (usuarioId) {
+        await excluirUsuario(request, usuarioId);
+      }
+    }
   });
 
   test('consulta de usuário cumpre o contrato', async ({ request }) => {
@@ -224,6 +234,7 @@ test.describe('Contratos da API — produtos', () => {
 
   test('criação com administrador cumpre o contrato', async ({ request }) => {
     const admin = await criarUsuarioAutenticado(request, 'true');
+    let produtoId = '';
 
     try {
       const resposta = await request.post('/produtos', {
@@ -231,8 +242,16 @@ test.describe('Contratos da API — produtos', () => {
         headers: { Authorization: bearer(admin.token) },
       });
 
+      const corpo = (await resposta
+        .json()
+        .catch(() => null)) as MensagemResposta | null;
+      produtoId = corpo?._id ?? '';
+
       await validarContrato('produtos.criacao', resposta);
     } finally {
+      if (produtoId) {
+        await excluirProduto(request, admin.token, produtoId);
+      }
       await excluirUsuario(request, admin.usuario.id);
     }
   });

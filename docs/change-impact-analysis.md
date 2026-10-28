@@ -7,6 +7,11 @@ completa é obrigatória e como isso foi integrado ao pipeline existente.
 > Esta análise **complementa** a regressão completa; ela não a substitui. A
 > suíte completa continua disponível em `npm test` e é acionada sempre que o
 > impacto é incerto.
+>
+> **Nota ETAPA 19 (2026-10-28):** o projeto tem **26 specs principais** e **1
+> spec de performance**, com **43 testes** da própria estratégia. Os números de
+> dependentes citados abaixo são exemplos ilustrativos; o grafo real é
+> verificado pelos testes em `tests/impacto/selecao.spec.ts`.
 
 ## 1. Objetivo
 
@@ -44,7 +49,7 @@ O grafo é construído a partir dos imports relativos encontrados em
 `node:*`) são ignorados; um caminho relativo é resolvido para `.ts` ou
 `index.ts`.
 
-Relações relevantes observadas no repositório atual (24 specs principais, mais
+Relações relevantes observadas no repositório atual (26 specs principais, mais
 1 spec de performance):
 
 | Arquivo alterado | Specs dependentes | Resultado real |
@@ -63,7 +68,7 @@ completa. Isso evita manter dezenas de comandos direcionados quando quase toda a
 suíte seria afetada e reduz o risco de subseleção.
 
 Exemplos de dependências transitivas: `tests/helpers/contratos.ts` importa
-`contracts/index.ts`; como esse adaptador é usado por 18 specs, mudanças no
+`contracts/index.ts`; como esse adaptador é usado por vários specs, mudanças no
 motor de contratos alcançam a maior parte da suíte e são tratadas como globais.
 
 ## 4. Critérios de seleção

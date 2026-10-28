@@ -72,8 +72,16 @@ export async function criarUsuarioTeste(
   const response = await request.post('/usuarios', { data: payload });
 
   const body = await lerJson<MensagemResposta>(response, 201, 'criação de usuário');
-  expect(body.message).toBe(MENSAGEM_CADASTRO_SUCESSO);
-  expect(body._id, 'criação de usuário deve retornar um _id').toBeTruthy();
+
+  try {
+    expect(body.message).toBe(MENSAGEM_CADASTRO_SUCESSO);
+    expect(body._id, 'criação de usuário deve retornar um _id').toBeTruthy();
+  } catch (erro) {
+    if (body._id) {
+      await excluirUsuario(request, body._id);
+    }
+    throw erro;
+  }
 
   return { id: body._id!, ...payload };
 }

@@ -10,7 +10,8 @@ Na ETAPA 10, a suíte tinha **265 testes** e levava ~2,3 min contra uma API
 pública compartilhada. Não faz sentido executar tudo sempre: para feedback
 rápido em pull requests e para decisão de release, os cenários foram
 classificados por risco e agrupados em níveis de regressão com comandos reais e
-medidos.
+medidos. Na ETAPA 19, a suíte tem **384 testes** (26 arquivos no config
+principal) e a regressão completa levou **3,7 min**.
 
 > A partir da ETAPA 16, a seleção por impacto complementa esta estratégia:
 > mudanças localizadas executam apenas os specs afetados, enquanto smoke,
@@ -31,17 +32,20 @@ probabilidade de o cenário representar um caminho real de uso.
 
 Os 25 cenários de **risco alto** recebem a tag `@critico` no título; os 5 que
 também validam o contrato mínimo de um ponto de entrada da API recebem
-`@smoke` (subconjunto dos críticos). Os demais 240 permanecem sem tag e só
-entram na regressão completa.
+`@smoke` (subconjunto dos críticos). Na ETAPA 10, os demais 240 permaneciam sem
+tag; na ETAPA 19, são **359 sem tag** (384 − 25), que só entram na regressão
+completa. A tabela de risco abaixo preserva a classificação original da
+ETAPA 10; os testes adicionados depois foram incorporados aos grupos existentes
+sem reclassificar os cenários históricos.
 
 ## 3. Grupos de execução
 
 | Grupo | Seletor | Testes | Tempo medido | Uso |
 | --- | --- | --- | --- | --- |
 | **Smoke** | `npm run test:smoke` (`--grep @smoke`) | 5 | ~6 s | Sinal imediato de que a API responde, o login funciona e os contratos básicos de listagem não mudaram |
-| **Críticos** | `npm run test:criticos` (`--grep @critico`) | 25 | ~37 s | Gate de regressão de risco alto: permissões, estoque, carrinhos e persistência de CRUD |
-| **Regressão completa** | `npm test` | 265 | ~138 s | Validação integral antes de merge/release; engloba os dois grupos acima |
-| **Contratos (local)** | `npm run test:contratos` | 56 | ~1 s | Motor de schemas e consistência do registro — **sem rede**, roda antes de qualquer chamada à API |
+| **Críticos** | `npm run test:criticos` (`--grep @critico`) | 25 | ~57 s | Gate de regressão de risco alto: permissões, estoque, carrinhos e persistência de CRUD |
+| **Regressão completa** | `npm test` | 384 | ~3,7 min | Validação integral antes de merge/release; engloba os dois grupos acima |
+| **Contratos (local)** | `npm run test:contratos` | 78 | ~2 s | Motor de schemas e consistência do registro — **sem rede**, roda antes de qualquer chamada à API |
 
 Todas as execuções usam `workers: 1` (a API pública limita a taxa por IP;
 ver `README.md`).
@@ -107,12 +111,12 @@ Verificado na suíte antes de fixar os grupos:
 
 | Grupo | Comando | Data | Resultado |
 | --- | --- | --- | --- |
-| Smoke | `npm run test:smoke` | 2026-10-22 | 5/5 aprovados |
-| Críticos | `npm run test:criticos` | 2026-10-22 | 25/25 aprovados |
-| Regressão completa | `npm test` | 2026-10-22 | 265/265 aprovados, ~138 s |
-| Contratos (local, sem rede) | `npm run test:contratos` | 2026-10-22 | 56/56 aprovados, ~1 s |
-| Contratos (API real) | `npm run test:contratos:api` | 2026-10-22 | 25/25 aprovados, ~18 s |
-| Latência (manual, isolada) | `npm run test:latencia` | 2026-10-22 | 4/4 aprovados, 20 amostras, ~5 s |
+| Smoke | `npm run test:smoke` | 2026-10-28 | 5/5 aprovados, ~6 s |
+| Críticos | `npm run test:criticos` | 2026-10-28 | 25/25 aprovados, ~57 s |
+| Regressão completa | `npm test` | 2026-10-28 | 384/384 aprovados, 222 s |
+| Contratos (local, sem rede) | `npm run test:contratos` | 2026-10-28 | 78/78 aprovados, ~2 s |
+| Contratos (API real) | `npm run test:contratos:api` | 2026-10-28 | 25/25 aprovados, ~30 s |
+| Latência (manual, isolada) | `npm run test:latencia` | 2026-10-28 | 4/4 aprovados, 20 amostras, ~17 s |
 
 Evidências: relatório HTML (`playwright-report/index.html`) de cada execução e,
 para a avaliação de latência, `performance-results/*.json`.

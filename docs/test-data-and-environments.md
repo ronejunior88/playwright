@@ -112,8 +112,9 @@ e a limpeza das contas. Se o login de uma conta recém-criada falhar,
 
 A limpeza em `tests/helpers/limpeza.ts`:
 
-- tenta novamente **uma vez** apenas em HTTP 429 ou erro de rede;
-- não repete em outros status;
+- tenta novamente **uma vez** em HTTP 429 ou quando a requisição lança uma
+  exceção de transporte (rede/timeout);
+- não repete em outros status HTTP;
 - registra a falha no console e como anotação `cleanup` no relatório;
 - não falha o teste por uma limpeza malsucedida, pois o erro original deve ser
   preservado.

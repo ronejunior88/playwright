@@ -64,14 +64,14 @@ npx playwright test -g "login"             # por título
 
 | Script               | Descrição                                                    |
 | -------------------- | ------------------------------------------------------------ |
-| `npm test`           | Regressão completa: 384 testes (1 worker).                   |
+| `npm test`           | Regressão completa: 384 testes (1 worker), ~3,7 min.         |
 | `npm run test:api`   | Alias de `npm test` (a suíte inteira é API).                 |
 | `npm run test:smoke` | Smoke: 5 testes (`--grep @smoke`), ~6 s.                     |
-| `npm run test:criticos` | Risco alto: 25 testes (`--grep @critico`), ~37 s.         |
+| `npm run test:criticos` | Risco alto: 25 testes (`--grep @critico`), ~57 s.         |
 | `npm run test:paralelo` | Executa com 2 workers (mais rápido, pode receber **429**). |
-| `npm run test:latencia` | Latência da API: config e suíte isoladas, ~5 s.            |
+| `npm run test:latencia` | Latência da API: config e suíte isoladas, ~17 s.           |
 | `npm run test:contratos` | Contratos: motor e registro, 78 testes **sem rede**, ~2 s. |
-| `npm run test:contratos:api` | Contratos contra a API real, 25 testes, ~18 s.        |
+| `npm run test:contratos:api` | Contratos contra a API real, 25 testes, ~30 s.        |
 | `npm run test:impacto` | Seleção por impacto: 43 testes, **sem rede**, ~1 s.        |
 | `npm run impacto` | Analisa um diff e indica modo, nível e testes afetados.   |
 | `npm run test:mutacao` | Mutation testing (Stryker): 5 arquivos, ~19 min, **sem rede**. |
@@ -94,9 +94,11 @@ duplicação/tipagem da suíte, com as decisões de escopo, está em
 testes (mutation testing) está em
 [`docs/mutation-testing.md`](docs/mutation-testing.md); a análise de impacto
 com seleção de testes está em
-[`docs/change-impact-analysis.md`](docs/change-impact-analysis.md); e as
+[`docs/change-impact-analysis.md`](docs/change-impact-analysis.md); as
 decisões sobre dados e ambientes estão em
-[`docs/test-data-and-environments.md`](docs/test-data-and-environments.md).
+[`docs/test-data-and-environments.md`](docs/test-data-and-environments.md); e a
+auditoria integrada da ETAPA 19 está em
+[`docs/integrated-quality-audit.md`](docs/integrated-quality-audit.md).
 
 ## Estrutura
 
@@ -159,6 +161,7 @@ docs/
   mutation-testing.md         # força dos testes via Stryker (ETAPA 15)
   change-impact-analysis.md   # análise de impacto e seleção de testes (ETAPA 16)
   test-data-and-environments.md # dados, isolamento e configuração (ETAPA 18)
+  integrated-quality-audit.md # auditoria integrada e prontidão (ETAPA 19)
 stryker.conf.json             # configuração do mutation testing
 playwright.latencia.config.ts # config isolado da suíte de desempenho
 .env.example                  # modelo das variáveis de ambiente

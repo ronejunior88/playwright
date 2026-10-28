@@ -41,10 +41,9 @@ test.describe('Criação de usuários - POST /usuarios', () => {
     const body = await lerJson<MensagemResposta>(response, 201);
     expect(body.message).toBe(MENSAGEM_CADASTRO_SUCESSO);
     validarMensagemComId(body);
+    idsCriados.push(body._id!);
 
     await validarContrato('usuarios.criacao', response);
-
-    idsCriados.push(body._id!);
 
     const consulta = await request.get(`/usuarios/${body._id}`);
     const corpo = await lerJson<UsuarioApi>(consulta, 200);

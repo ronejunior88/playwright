@@ -4,6 +4,12 @@ Documento da **ETAPA 9**. Complementa `docs/traceability-matrix.md` com a visão
 agregada de cobertura, as lacunas priorizadas por risco e as evidências de
 execução.
 
+> **Nota ETAPA 19 (2026-10-28):** os números de testes e de arquivos desta
+> análise são a fotografia histórica da ETAPA 9 e foram preservados. A suíte
+> atual tem **384 testes em 26 arquivos** no config principal, **78 testes
+> locais de contrato** e **43 testes de impacto**; a execução validada está em
+> [`integrated-quality-audit.md`](integrated-quality-audit.md).
+
 ## 1. Método da análise
 
 1. Fonte de requisitos: documentação publicada da API

@@ -215,8 +215,16 @@ export async function criarProdutoTeste(
   });
 
   const body = await lerJson<MensagemResposta>(response, 201, 'criação de produto');
-  expect(body.message).toBe(MENSAGEM_CADASTRO_SUCESSO);
-  expect(body._id, 'criação de produto deve retornar um _id').toBeTruthy();
+
+  try {
+    expect(body.message).toBe(MENSAGEM_CADASTRO_SUCESSO);
+    expect(body._id, 'criação de produto deve retornar um _id').toBeTruthy();
+  } catch (erro) {
+    if (body._id) {
+      await excluirProduto(request, token, body._id);
+    }
+    throw erro;
+  }
 
   return { id: body._id!, ...payload };
 }

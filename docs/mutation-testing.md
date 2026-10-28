@@ -4,6 +4,13 @@ Documento da **ETAPA 15**. Mede o quanto a suíte local detecta defeitos
 realmente introduzidos no código, complementando a cobertura de linhas com uma
 métrica de **qualidade das asserções**.
 
+> **Nota ETAPA 19 (2026-10-28):** os resultados de mutação abaixo são históricos
+> (123 testes offline, 312 mutantes na ETAPA 15) e **não foram reexecutados**
+> nesta auditoria. O dry-run do Stryker foi validado após a atualização do
+> lockfile (5 arquivos instrumentados, 720 mutantes, execução inicial
+> aprovada). A suíte atual tem 384 testes; a validação está em
+> [`integrated-quality-audit.md`](integrated-quality-audit.md).
+
 ## 1. Objetivo
 
 A cobertura de código responde "esta linha foi executada?"; o mutation testing

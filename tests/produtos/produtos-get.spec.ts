@@ -10,6 +10,7 @@ import {
   criarProdutoTeste,
   criarUsuarioProdutoTeste,
   excluirProduto,
+  gerarNomeProdutoUnico,
   MENSAGEM_PRODUTO_NAO_ENCONTRADO,
   type ListaProdutos,
   type ProdutoApi,
@@ -146,7 +147,7 @@ test.describe('Consulta de produtos - GET /produtos', () => {
     request,
   }) => {
     const response = await request.get('/produtos', {
-      params: { nome: 'Produto Nome Inexistente XYZ 999' },
+      params: { nome: gerarNomeProdutoUnico('Produto Inexistente') },
     });
 
     const body = await lerJson<ListaProdutos>(response, 200);

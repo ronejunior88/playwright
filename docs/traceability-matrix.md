@@ -38,6 +38,11 @@ ServeRest ao cenário automatizado que o verifica.
 > validam a ferramenta que escolhe quais specs executar. A análise e os
 > critérios estão em `docs/change-impact-analysis.md`; os números de testes e
 > arquivos das ETAPAs 9–13 acima são históricos e não foram reescritos.
+>
+> A ETAPA 18 acrescentou 29 testes unitários de **configuração e geração de
+> dados** e 3 cenários de impacto para `.nvmrc`, `tests/helpers/configuracao.ts`
+> e `.env.example`. Eles também não criam requisitos de API; as decisões estão
+> em `docs/test-data-and-environments.md`.
 
 Método: leitura direta da documentação (HTML da versão publicada), inventário de
 endpoints e respostas, comparação com os títulos reais dos testes da suíte e

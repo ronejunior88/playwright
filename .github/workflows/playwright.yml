@@ -24,13 +24,16 @@ jobs:
   test:
     timeout-minutes: 30
     runs-on: ubuntu-latest
+    env:
+      SERVE_REST_BASE_URL: ${{ vars.SERVE_REST_BASE_URL || 'https://serverest.dev' }}
+      API_TIMEOUT_MS: ${{ vars.API_TIMEOUT_MS || '30000' }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version-file: '.nvmrc'
           cache: npm
       - name: Install dependencies
         run: npm ci

@@ -31,7 +31,7 @@ falha de análise resulte em "nada a executar".
 | `scripts/impacto/projeto.js` | Lê `tests/**` e `contracts/**`, extrai imports relativos e calcula o grafo reverso de dependentes por spec |
 | `scripts/impacto/projeto.d.ts` | Tipos do carregador do projeto |
 | `scripts/selecionar-testes.js` | CLI: lê `git diff --name-status -M`, chama a lógica pura e escreve saída humana, JSON e `$GITHUB_OUTPUT` |
-| `tests/impacto/selecao.spec.ts` | 40 testes offline da estratégia e do grafo real |
+| `tests/impacto/selecao.spec.ts` | 43 testes offline da estratégia e do grafo real |
 | `.github/workflows/playwright.yml` | Calcula o diff, executa o seletor e escolhe as validações, com fallback para completa |
 
 Não há dependência externa nova. A solução usa Node.js, o grafo de imports
@@ -77,9 +77,9 @@ A classificação é feita pelo caminho normalizado (barras `/`, sem `./`):
 | Código de teste/contrato | `tests/helpers/**`, `tests/fixtures.ts`, `contracts/**` | Executar dependentes transitivos do grafo |
 | Estratégia de seleção | `scripts/**` | Executar `tests/impacto/**` |
 | Performance | `tests/performance/**` | Acionar a suíte de latência; não adicionar specs funcionais |
-| Configuração global | `playwright*.config.ts`, `tsconfig.json`, `package.json`, `package-lock.json` | Regressão completa |
+| Configuração global | `playwright*.config.ts`, `tsconfig.json`, `package.json`, `package-lock.json`, `tests/helpers/configuracao.ts`, `.nvmrc` | Regressão completa |
 | Workflow/CI | `.github/workflows/**`, `.github/**` | Regressão completa e aviso para validar o pipeline |
-| Ferramenta sem teste de API | `stryker.conf.json`, `.gitignore`, `.editorconfig` | Ignorar com aviso de validação manual |
+| Ferramenta sem teste de API | `stryker.conf.json`, `.gitignore`, `.editorconfig`, `.env.example` | Ignorar com aviso de validação manual |
 | Desconhecido | qualquer outro caminho | Regressão completa |
 | Exclusão | status `D` | Regressão completa, exceto documentação/ferramenta |
 | Renomeação | status `R` | Mesma categoria: processa o novo caminho; categoria diferente: completa |
@@ -183,25 +183,25 @@ execução vazia.
 
 ## 8. Testes da estratégia
 
-`npm run test:impacto` cobre 40 cenários, entre eles:
+`npm run test:impacto` cobre 43 cenários, entre eles:
 
 - mudança no teste de login e no schema de contrato;
 - helper compartilhado e helper sem dependentes;
 - configurações globais (`playwright`, `tsconfig`, `package.json`,
-  `package-lock.json`);
+  `package-lock.json`, `tests/helpers/configuracao.ts`, `.nvmrc`);
 - documentação, arquivo desconhecido e lista ausente;
 - múltiplos recursos simultâneos e deduplicação;
 - independência de ordem e determinismo;
 - exclusão de teste, helper e documentação;
 - renomeação de teste, de documentação e mudança de categoria;
 - workflow, performance e scripts da própria estratégia;
-- configuração de ferramenta (`stryker.conf.json`);
+- configuração de ferramenta (`stryker.conf.json`, `.env.example`);
 - entradas inválidas, status Git não suportado, normalização de caminhos e
   cópia de teste;
 - grafo real do projeto, incluindo dependentes transitivos de contratos e a
   seleção real de `tests/helpers/cenario-carrinhos.ts`.
 
-Evidência local: `40 passed` com `npm run test:impacto`. As simulações de CLI
+Evidência local: `43 passed` com `npm run test:impacto`. As simulações de CLI
 produziram `direcionada` para login, `nenhum` para documentação, `direcionada`
 para renomeação de login e `completa` para arquivo desconhecido ou falha de
 análise.

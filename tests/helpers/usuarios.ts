@@ -1,5 +1,5 @@
 import { expect, type APIRequestContext } from '@playwright/test';
-import { gerarSufixo } from './aleatorio';
+import { gerarSufixo, gerarTextoHexadecimal } from './aleatorio';
 import { executarLimpeza } from './limpeza';
 import {
   lerJson,
@@ -33,6 +33,9 @@ export const MENSAGEM_USUARIO_NAO_ENCONTRADO = 'Usuário não encontrado';
 /** Mensagem devolvida quando o e-mail informado já está em uso. */
 export const MENSAGEM_EMAIL_EM_USO = 'Este email já está sendo usado';
 
+/** Senha sintética usada quando o teste não precisa de um valor específico. */
+export const SENHA_PADRAO = 'SenhaTeste@123';
+
 export function gerarEmailUnico(prefixo: string): string {
   return `${prefixo}-${gerarSufixo()}@example.com`;
 }
@@ -41,25 +44,30 @@ export function gerarNomeUnico(prefixo: string): string {
   return `${prefixo} ${gerarSufixo()}`;
 }
 
+export function gerarSenhaUnica(prefixo = 'Senha'): string {
+  return `${prefixo}@${gerarTextoHexadecimal(6)}`;
+}
+
 export function gerarIdUnico(): string {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let id = '';
-  for (let i = 0; i < 16; i += 1) {
-    id += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return id;
+  return gerarTextoHexadecimal(8);
+}
+
+export function montarDadosUsuario(
+  dados: Partial<DadosUsuario> = {},
+): DadosUsuario {
+  return {
+    nome: dados.nome ?? gerarNomeUnico('Usuário de Teste'),
+    email: dados.email ?? gerarEmailUnico('usuario-test'),
+    password: dados.password ?? SENHA_PADRAO,
+    administrador: dados.administrador ?? 'false',
+  };
 }
 
 export async function criarUsuarioTeste(
   request: APIRequestContext,
   dados: Partial<DadosUsuario> = {},
 ): Promise<UsuarioCriado> {
-  const payload: DadosUsuario = {
-    nome: dados.nome ?? gerarNomeUnico('Usuário de Teste'),
-    email: dados.email ?? gerarEmailUnico('usuario-test'),
-    password: dados.password ?? 'SenhaTeste@123',
-    administrador: dados.administrador ?? 'false',
-  };
+  const payload = montarDadosUsuario(dados);
 
   const response = await request.post('/usuarios', { data: payload });
 

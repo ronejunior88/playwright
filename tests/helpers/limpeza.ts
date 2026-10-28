@@ -1,6 +1,17 @@
-import type { APIResponse } from '@playwright/test';
+import { test, type APIResponse } from '@playwright/test';
+import { sanitizarTexto } from './diagnostico';
 
 const TENTATIVAS = 2;
+
+function registrarFalha(mensagem: string): void {
+  console.warn(mensagem);
+
+  try {
+    test.info().annotations.push({ type: 'cleanup', description: mensagem });
+  } catch {
+    return;
+  }
+}
 
 export async function executarLimpeza(
   descricao: string,
@@ -19,14 +30,16 @@ export async function executarLimpeza(
         continue;
       }
 
-      console.warn(`Cleanup ${descricao} falhou (status ${status}).`);
+      registrarFalha(`Cleanup ${descricao} falhou (status ${status}).`);
       return;
     } catch (erro) {
       if (tentativa < TENTATIVAS) {
         continue;
       }
 
-      console.warn(`Cleanup ${descricao} falhou: ${(erro as Error).message}`);
+      registrarFalha(
+        `Cleanup ${descricao} falhou: ${sanitizarTexto((erro as Error).message)}`,
+      );
       return;
     }
   }

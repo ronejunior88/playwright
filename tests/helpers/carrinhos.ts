@@ -15,7 +15,7 @@ import {
   MENSAGEM_CADASTRO_SUCESSO,
   type MensagemResposta,
 } from './resposta';
-import { type UsuarioCriado } from './usuarios';
+import { excluirUsuario, type UsuarioCriado } from './usuarios';
 
 export interface ItemCarrinho {
   idProduto: string;
@@ -152,8 +152,14 @@ export async function criarUsuarioAutenticado(
   administrador: 'true' | 'false' = 'false',
 ): Promise<UsuarioAutenticado> {
   const usuario = await criarUsuarioProdutoTeste(request, administrador);
-  const token = await fazerLogin(request, usuario.email, usuario.password);
-  return { usuario, token };
+
+  try {
+    const token = await fazerLogin(request, usuario.email, usuario.password);
+    return { usuario, token };
+  } catch (erro) {
+    await excluirUsuario(request, usuario.id);
+    throw erro;
+  }
 }
 
 export async function criarCarrinhoTeste(

@@ -8,12 +8,15 @@ const CONFIGURACOES_GLOBAIS = new Set([
   'tsconfig.json',
   'package.json',
   'package-lock.json',
+  'tests/helpers/configuracao.ts',
+  '.nvmrc',
 ]);
 
 const CONFIGURACOES_SEM_TESTES = new Set([
   'stryker.conf.json',
   '.gitignore',
   '.editorconfig',
+  '.env.example',
 ]);
 
 function normalizarCaminho(caminho) {

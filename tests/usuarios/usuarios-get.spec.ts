@@ -16,6 +16,7 @@ import {
   excluirUsuario,
   gerarIdUnico,
   gerarNomeUnico,
+  gerarSenhaUnica,
   MENSAGEM_USUARIO_NAO_ENCONTRADO,
   type ListaUsuarios,
   type UsuarioApi,
@@ -121,7 +122,7 @@ test.describe('Consulta de usuários - GET /usuarios', () => {
   });
 
   test('deve filtrar usuários por password', async ({ request }) => {
-    const senhaExclusiva = 'SenhaFiltroPassword@123';
+    const senhaExclusiva = gerarSenhaUnica('SenhaFiltro');
     const usuario = await criarUsuarioTeste(request, { password: senhaExclusiva });
     idsCriados.push(usuario.id);
 
@@ -140,7 +141,7 @@ test.describe('Consulta de usuários - GET /usuarios', () => {
     expect(usuariosCriados).toHaveLength(1);
 
     const semCorrespondencia = await request.get('/usuarios', {
-      params: { password: 'senha-que-nao-existe-9f3a1' },
+      params: { password: gerarSenhaUnica('senha-inexistente') },
     });
 
     const corpoVazio = await lerJson<ListaUsuarios>(semCorrespondencia, 200);

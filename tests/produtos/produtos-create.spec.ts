@@ -86,7 +86,7 @@ test.describe('Criação de produtos - POST /produtos', () => {
     request,
   }) => {
     const payload = {
-      nome: 'Produto Sem Token 777',
+      nome: gerarNomeProdutoUnico('Produto Sem Token'),
       preco: 100,
       descricao: 'Descrição sem token',
       quantidade: 1,
@@ -109,7 +109,7 @@ test.describe('Criação de produtos - POST /produtos', () => {
 
   test('deve rejeitar a criação com token inválido', async ({ request }) => {
     const payload = {
-      nome: 'Produto Token Invalido 777',
+      nome: gerarNomeProdutoUnico('Produto Token Invalido'),
       preco: 100,
       descricao: 'Descrição token inválido',
       quantidade: 1,
@@ -171,7 +171,7 @@ test.describe('Criação de produtos - POST /produtos', () => {
     request,
   }) => {
     const payload = {
-      nome: 'Produto Usuario Comum 777',
+      nome: gerarNomeProdutoUnico('Produto Usuario Comum'),
       preco: 100,
       descricao: 'Descrição usuário comum',
       quantidade: 1,

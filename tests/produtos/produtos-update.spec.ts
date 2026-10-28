@@ -11,6 +11,7 @@ import {
   criarProdutoTeste,
   criarUsuarioProdutoTeste,
   excluirProduto,
+  gerarNomeProdutoUnico,
   MENSAGEM_NOME_PRODUTO_EM_USO,
   MENSAGEM_PRODUTO_NAO_ENCONTRADO,
   type ProdutoApi,
@@ -218,7 +219,7 @@ test.describe('Atualização de produtos - PUT /produtos/{_id}', () => {
     expect(consultaPrevia.status()).toBe(400);
 
     const dados = {
-      nome: 'Produto Criado Via Put 888',
+      nome: gerarNomeProdutoUnico('Produto Criado Via Put'),
       preco: 444,
       descricao: 'Produto criado por PUT com id inexistente',
       quantidade: 4,

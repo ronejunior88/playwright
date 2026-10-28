@@ -1,4 +1,11 @@
 import { defineConfig } from '@playwright/test';
+import {
+  carregarArquivoEnv,
+  carregarConfiguracao,
+} from './tests/helpers/configuracao';
+
+carregarArquivoEnv();
+const { baseURL } = carregarConfiguracao();
 
 /**
  * Configuracao isolada da avaliacao de latencia da API.
@@ -22,7 +29,7 @@ export default defineConfig({
   workers: 1,
   reporter: [['list']],
   use: {
-    baseURL: 'https://serverest.dev',
+    baseURL,
     extraHTTPHeaders: {
       Accept: 'application/json',
     },

@@ -5,19 +5,38 @@ contra a API pública [ServeRest](https://serverest.dev).
 
 ## Pré-requisitos
 
-- Node.js (LTS) e npm
+- Node.js **24.14.1** (fixado em `.nvmrc` e em `engines.node`) e npm 11+
 - Acesso à internet (a API testada é pública e compartilhada)
 
 ## Instalação
 
 ```bash
+node --version   # deve ser v24.14.1
 npm ci
 ```
 
 Não é necessário baixar navegadores: a suíte é **somente de API** (usa o
 `APIRequestContext` do Playwright).
 
+## Configuração por ambiente
+
+Os padrões são `https://serverest.dev` e timeout de `30000` ms por teste. Para
+alterar sem editar o código, use variáveis de ambiente:
+
+| Variável | Padrão | Uso |
+| --- | --- | --- |
+| `SERVE_REST_BASE_URL` | `https://serverest.dev` | URL base da API |
+| `API_TIMEOUT_MS` | `30000` | Timeout por teste, entre 1 e 120000 ms |
+| `CI` | não definido | `true` ativa retries, `forbidOnly` e reporter do GitHub |
+
+O `.env.example` documenta as variáveis. Copie para `.env` apenas se necessário;
+o arquivo é ignorado pelo Git e carregado automaticamente quando existe.
+Variáveis já definidas no processo têm precedência. Valores inválidos falham
+antes da execução dos testes. Detalhes em
+[`docs/test-data-and-environments.md`](docs/test-data-and-environments.md).
+
 ## Execução
+
 ```bash
 npm test              # executa toda a suíte
 npm run test:api      # alias para toda a suíte (100% API)
@@ -26,7 +45,7 @@ npm run test:criticos # apenas os 25 testes de risco alto (@critico)
 npm run test:latencia # avaliação isolada de latência da API (GET, 20 amostras)
 npm run test:contratos      # contratos: motor + registro (78 testes, sem rede)
 npm run test:contratos:api  # contratos: integração com a API (25 testes)
-npm run test:impacto  # análise de impacto: 40 testes da seleção (sem rede)
+npm run test:impacto  # análise de impacto: 43 testes da seleção (sem rede)
 npm run impacto -- --arquivos changed-files.txt  # analisa um diff do Git
 npm run test:mutacao  # mutation testing local com Stryker (~19 min, sem rede)
 npm run typecheck     # checagem de tipos (tsc --noEmit)
@@ -45,7 +64,7 @@ npx playwright test -g "login"             # por título
 
 | Script               | Descrição                                                    |
 | -------------------- | ------------------------------------------------------------ |
-| `npm test`           | Regressão completa: 352 testes (1 worker).                   |
+| `npm test`           | Regressão completa: 384 testes (1 worker).                   |
 | `npm run test:api`   | Alias de `npm test` (a suíte inteira é API).                 |
 | `npm run test:smoke` | Smoke: 5 testes (`--grep @smoke`), ~6 s.                     |
 | `npm run test:criticos` | Risco alto: 25 testes (`--grep @critico`), ~37 s.         |
@@ -53,7 +72,7 @@ npx playwright test -g "login"             # por título
 | `npm run test:latencia` | Latência da API: config e suíte isoladas, ~5 s.            |
 | `npm run test:contratos` | Contratos: motor e registro, 78 testes **sem rede**, ~2 s. |
 | `npm run test:contratos:api` | Contratos contra a API real, 25 testes, ~18 s.        |
-| `npm run test:impacto` | Seleção por impacto: 40 testes, **sem rede**, ~1 s.        |
+| `npm run test:impacto` | Seleção por impacto: 43 testes, **sem rede**, ~1 s.        |
 | `npm run impacto` | Analisa um diff e indica modo, nível e testes afetados.   |
 | `npm run test:mutacao` | Mutation testing (Stryker): 5 arquivos, ~19 min, **sem rede**. |
 | `npm run typecheck`  | Verifica os tipos com TypeScript.                            |
@@ -73,9 +92,11 @@ contratos da API está em
 duplicação/tipagem da suíte, com as decisões de escopo, está em
 [`docs/code-quality.md`](docs/code-quality.md); e a avaliação da força dos
 testes (mutation testing) está em
-[`docs/mutation-testing.md`](docs/mutation-testing.md); e a análise de impacto
+[`docs/mutation-testing.md`](docs/mutation-testing.md); a análise de impacto
 com seleção de testes está em
-[`docs/change-impact-analysis.md`](docs/change-impact-analysis.md).
+[`docs/change-impact-analysis.md`](docs/change-impact-analysis.md); e as
+decisões sobre dados e ambientes estão em
+[`docs/test-data-and-environments.md`](docs/test-data-and-environments.md).
 
 ## Estrutura
 
@@ -106,13 +127,16 @@ tests/
   performance/                # avaliação isolada de latência (fora da regressão)
     api-latency.spec.ts
   impacto/
-    selecao.spec.ts           # testes da análise de impacto (40, sem rede)
+    selecao.spec.ts           # testes da análise de impacto (43, sem rede)
   helpers/                    # utilitários reutilizados pelos testes
     autenticacao.ts           # login, bearer() e mensagens de autenticação
-    aleatorio.ts              # geração de sufixo aleatório (dados únicos)
+    aleatorio.ts              # sufixos e valores únicos com crypto
+    configuracao.ts           # URL, timeout, workers, retries e .env
+    configuracao.spec.ts      # testes unitários da configuração (sem rede)
+    dados.spec.ts             # testes unitários de geração de dados (sem rede)
     resposta.ts               # formato de corpo da API e lerJson()
-    usuarios.ts
-    produtos.ts
+    usuarios.ts               # usuários, senhas e dados únicos
+    produtos.ts               # produtos, preços e quantidades
     carrinhos.ts
     cenario-carrinhos.ts      # ciclo de vida compartilhado pelos specs de carrinho
     contrato.ts               # validadores de contrato centralizados
@@ -122,7 +146,7 @@ tests/
     latencia.ts                # medição, classificação de falhas e estatística
     latencia.spec.ts          # testes unitários do cálculo estatístico (sem rede)
     resposta.spec.ts          # testes unitários da leitura de resposta (sem rede)
-    limpeza.ts                # exclusão com proteção contra 429 (1 tentativa extra)
+    limpeza.ts                # exclusão com retry em 429/rede e anotação de falhas
 docs/
   traceability-matrix.md      # matriz requisito x cenário x arquivo (99 requisitos)
   coverage-analysis.md        # cobertura agregada e lacunas por risco
@@ -134,8 +158,11 @@ docs/
   code-quality.md             # duplicação, tipagem e decisões de escopo (ETAPA 14)
   mutation-testing.md         # força dos testes via Stryker (ETAPA 15)
   change-impact-analysis.md   # análise de impacto e seleção de testes (ETAPA 16)
+  test-data-and-environments.md # dados, isolamento e configuração (ETAPA 18)
 stryker.conf.json             # configuração do mutation testing
 playwright.latencia.config.ts # config isolado da suíte de desempenho
+.env.example                  # modelo das variáveis de ambiente
+.nvmrc                        # versão de Node.js usada localmente e no CI
 ```
 
 ## Contratos da API
@@ -198,12 +225,15 @@ e [`docs/coverage-analysis.md`](docs/coverage-analysis.md).
 
 ## Dados e isolamento
 
-- Cada teste cria seus próprios dados com identificadores únicos
-  (`email`/`nome`/`id` dinâmicos) e remove o que criou (`afterEach`/`afterAll`
-  ou blocos `finally`).
+- Cada teste cria seus próprios dados com identificadores únicos gerados por
+  `crypto` (`email`/`nome`/`id` dinâmicos) e remove o que criou
+  (`afterEach`/`afterAll` ou blocos `finally`).
+- `montarDadosUsuario` e `montarDadosProduto` centralizam os payloads padrão;
+  valores fixos só permanecem quando a asserção depende deles.
 - A suíte não altera nem depende de dados de terceiros: só apaga registros
-  criados por ela e detectáveis pelos prefixos (`usuario-test`,
-  `login-test`, `admin-cleanup`, `Produto Playwright QA`, ...).
+  criados por ela e registrados em memória por ID, usando prefixos como
+  `usuario-test`, `login-test`, `admin-cleanup` e `Produto Playwright QA` para
+  legibilidade.
 - Os recursos criados são **registrados imediatamente** na criação (antes de
   qualquer operação posterior), para que uma falha no meio do teste não deixe
   registros órfãos.
@@ -213,7 +243,10 @@ e [`docs/coverage-analysis.md`](docs/coverage-analysis.md).
   `afterAll`), evitando exclusões redundantes em O(n²).
 - A limpeza (`tests/helpers/limpeza.ts`) faz **no máximo 1 tentativa extra, e
   apenas quando o primeiro retorno é HTTP 429 ou erro de rede**. Outras falhas
-  geram apenas um aviso no console e nunca mascaram a falha real do teste.
+  geram aviso no console e anotação `cleanup` no relatório, mas nunca mascaram a
+  falha real do teste.
+- Se o login de uma conta recém-criada falhar, `criarUsuarioAutenticado` remove a
+  conta antes de propagar o erro.
 - **Não existe limpeza global** da API: nenhum teste apaga dados que não
   criou.
 
@@ -224,7 +257,7 @@ e [`docs/coverage-analysis.md`](docs/coverage-analysis.md).
   - `--workers=2` (~20 req/s): o `GET /usuarios` do próprio *health check*
     (apenas leitura) já retorna **HTTP 429** — é limite de taxa, não contenção
     de dados.
-  - `--workers=1` (~10 req/s): suíte inteira **352 passed / 0 failed**.
+  - `--workers=1` (~10 req/s): suíte inteira **384 passed / 0 failed**.
 - Por isso o padrão é `workers: 1` (local e CI). `npm run test:paralelo`
   mantém o modo rápido disponível para quando o ambiente permitir.
 - Se uma execução receber **429**, trate como **condição do ambiente**: limpe os
@@ -320,8 +353,9 @@ histórico de requisições — sem imprimir os valores sensíveis no terminal.
 O workflow `.github/workflows/playwright.yml` roda a cada `push` e
 `pull_request` na branch `Estudos` (e também via `workflow_dispatch`):
 
-1. faz checkout com histórico completo (`fetch-depth: 0`) e instala
-   dependências com `npm ci` (cache do npm);
+1. faz checkout com histórico completo (`fetch-depth: 0`), usa a versão de Node
+   de `.nvmrc` e instala dependências com `npm ci` (cache do npm); aplica
+   `SERVE_REST_BASE_URL` e `API_TIMEOUT_MS` a partir de `vars`, com fallback;
 2. roda `npm run typecheck`;
 3. roda `npm run test:contratos` (78 testes locais do motor e do registro —
    **sem rede**, falha rápido se um contrato for quebrado);

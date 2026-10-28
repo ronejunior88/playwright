@@ -81,6 +81,8 @@ test.describe('seleção de testes por impacto', () => {
     'tsconfig.json',
     'package.json',
     'package-lock.json',
+    'tests/helpers/configuracao.ts',
+    '.nvmrc',
   ]) {
     test(`configuração global ${configuracao} exige regressão completa`, () => {
       const resultado = rodar([configuracao]);
@@ -236,11 +238,13 @@ test.describe('seleção de testes por impacto', () => {
     expect(resultado.testes).toEqual(['tests/impacto/selecao.spec.ts']);
   });
 
-  test('alteração em configuração de ferramenta não agenda API', () => {
-    const resultado = rodar(['stryker.conf.json']);
-    expect(resultado.modo).toBe('nenhum');
-    expect(resultado.avisos.length).toBeGreaterThan(0);
-  });
+  for (const configuracao of ['stryker.conf.json', '.env.example']) {
+    test(`alteração em configuração sem teste ${configuracao} não agenda API`, () => {
+      const resultado = rodar([configuracao]);
+      expect(resultado.modo).toBe('nenhum');
+      expect(resultado.avisos.length).toBeGreaterThan(0);
+    });
+  }
 
   test('helper sem dependentes mapeados exige regressão completa', () => {
     const resultado = rodar(['tests/helpers/latencia.ts']);

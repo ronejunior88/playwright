@@ -45,11 +45,11 @@ export function gerarNomeProdutoUnico(prefixo: string): string {
   return `${prefixo} ${gerarSufixo()}`;
 }
 
-export function gerarPrecoUnico(): number {
-  return Math.floor(Math.random() * 100000) + 1;
+export function gerarPrecoAleatorio(): number {
+  return Math.floor(Math.random() * 100_000) + 1;
 }
 
-export function gerarQuantidadeUnica(): number {
+export function gerarQuantidadeAleatoria(): number {
   return Math.floor(Math.random() * 100);
 }
 
@@ -189,19 +189,25 @@ export async function criarUsuarioProdutoTeste(
   return criarUsuarioTeste(request, { administrador: tipoAdministrador });
 }
 
+export function montarDadosProduto(
+  dados: Partial<DadosProduto> = {},
+): DadosProduto {
+  return {
+    nome: dados.nome ?? gerarNomeProdutoUnico('Produto Playwright QA'),
+    preco: dados.preco ?? gerarPrecoAleatorio(),
+    descricao:
+      dados.descricao ??
+      `Produto criado pelo teste automatizado em ${gerarSufixo()}`,
+    quantidade: dados.quantidade ?? gerarQuantidadeAleatoria(),
+  };
+}
+
 export async function criarProdutoTeste(
   request: APIRequestContext,
   token: string,
   dados: Partial<DadosProduto> = {},
 ): Promise<ProdutoCriado> {
-  const payload: DadosProduto = {
-    nome: dados.nome ?? gerarNomeProdutoUnico('Produto Playwright QA'),
-    preco: dados.preco ?? gerarPrecoUnico(),
-    descricao:
-      dados.descricao ??
-      `Produto criado pelo teste automatizado em ${gerarSufixo()}`,
-    quantidade: dados.quantidade ?? gerarQuantidadeUnica(),
-  };
+  const payload = montarDadosProduto(dados);
 
   const response = await request.post('/produtos', {
     data: payload,

@@ -11,14 +11,15 @@ import {
   criarProdutoTeste,
   excluirProduto,
   gerarNomeProdutoUnico,
-  gerarPrecoUnico,
-  gerarQuantidadeUnica,
+  gerarPrecoAleatorio,
+  gerarQuantidadeAleatoria,
 } from '../helpers/produtos';
 import {
   criarUsuarioTeste,
   excluirUsuario,
   gerarEmailUnico,
   gerarNomeUnico,
+  SENHA_PADRAO,
 } from '../helpers/usuarios';
 
 /**
@@ -35,9 +36,9 @@ import {
 function produtoSintetico() {
   return {
     nome: gerarNomeProdutoUnico('Produto Contrato'),
-    preco: gerarPrecoUnico(),
+    preco: gerarPrecoAleatorio(),
     descricao: 'Produto criado para conferência de contrato',
-    quantidade: gerarQuantidadeUnica(),
+    quantidade: gerarQuantidadeAleatoria(),
   };
 }
 
@@ -92,7 +93,7 @@ test.describe('Contratos da API — usuários', () => {
       data: {
         nome: gerarNomeUnico('Usuário Contrato'),
         email: gerarEmailUnico('usuario-contrato'),
-        password: 'SenhaTeste@123',
+        password: SENHA_PADRAO,
         administrador: 'false',
       },
     });
@@ -156,7 +157,7 @@ test.describe('Contratos da API — usuários', () => {
     const dados = {
       nome: gerarNomeUnico('Usuário Duplicado'),
       email: gerarEmailUnico('usuario-duplicado'),
-      password: 'SenhaTeste@123',
+      password: SENHA_PADRAO,
       administrador: 'false',
     };
 
@@ -292,9 +293,9 @@ test.describe('Contratos da API — produtos', () => {
         const resposta = await request.put(`/produtos/${produto.id}`, {
           data: {
             nome: gerarNomeProdutoUnico('Produto Atualizado'),
-            preco: gerarPrecoUnico(),
+            preco: gerarPrecoAleatorio(),
             descricao: 'Produto atualizado na conferência de contrato',
-            quantidade: gerarQuantidadeUnica(),
+            quantidade: gerarQuantidadeAleatoria(),
           },
           headers: { Authorization: bearer(admin.token) },
         });

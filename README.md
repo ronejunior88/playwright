@@ -407,6 +407,9 @@ detalhamento está em [`docs/performance-testing.md`](docs/performance-testing.m
 - A API é pública e compartilhada: uma taxa de requisições alta retorna
   **HTTP 429**. Por isso a configuração usa `workers: 1`; o modo paralelo
   (`npm run test:paralelo`) é opt-in e pode falhar por limite de ambiente.
+- No CI, as chamadas de API são espaçadas em 300 ms por
+  `API_REQUEST_INTERVAL_MS`; a suíte de latência sobrescreve o valor para `0`
+  para não contaminar as medições.
 - Nenhum token, senha real ou segredo é versionado; as credenciais usadas nos
   testes são fictícias e geradas em tempo de execução.
 - Os relatórios são gerados apenas durante a execução e nunca versionados.

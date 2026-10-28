@@ -24,6 +24,10 @@ const METODOS_HTTP = new Set([
   'fetch',
 ]);
 
+const INTERVALO_REQUISICAO_MS = Number(
+  process.env.API_REQUEST_INTERVAL_MS ?? '0',
+);
+
 function obterStatus(resposta: unknown): number {
   if (
     resposta &&
@@ -48,6 +52,12 @@ export const test = base.extend({
           typeof original === 'function'
         ) {
           return async (...argumentos: unknown[]) => {
+            if (INTERVALO_REQUISICAO_MS > 0) {
+              await new Promise((resolve) =>
+                setTimeout(resolve, INTERVALO_REQUISICAO_MS),
+              );
+            }
+
             const inicio = Date.now();
             try {
               const resposta = await (

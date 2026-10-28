@@ -3,6 +3,17 @@
 Projeto de estudos de automação de testes de API com **Playwright + TypeScript**
 contra a API pública [ServeRest](https://serverest.dev).
 
+## Como obter o projeto
+
+```bash
+git clone https://github.com/ronejunior88/playwright.git
+cd playwright
+git checkout Estudos
+```
+
+A branch de trabalho e entrega é `Estudos`; o pipeline do projeto também
+escuta `push` e `pull_request` nessa branch.
+
 ## Pré-requisitos
 
 - Node.js **24.14.1** (fixado em `.nvmrc` e em `engines.node`) e npm 11+
@@ -64,7 +75,7 @@ npx playwright test -g "login"             # por título
 
 | Script               | Descrição                                                    |
 | -------------------- | ------------------------------------------------------------ |
-| `npm test`           | Regressão completa: 384 testes (1 worker), ~3,7 min.         |
+| `npm test`           | Regressão completa: 384 testes (1 worker), ~3,6 min (217 s). |
 | `npm run test:api`   | Alias de `npm test` (a suíte inteira é API).                 |
 | `npm run test:smoke` | Smoke: 5 testes (`--grep @smoke`), ~6 s.                     |
 | `npm run test:criticos` | Risco alto: 25 testes (`--grep @critico`), ~57 s.         |
@@ -98,7 +109,11 @@ com seleção de testes está em
 decisões sobre dados e ambientes estão em
 [`docs/test-data-and-environments.md`](docs/test-data-and-environments.md); e a
 auditoria integrada da ETAPA 19 está em
-[`docs/integrated-quality-audit.md`](docs/integrated-quality-audit.md).
+[`docs/integrated-quality-audit.md`](docs/integrated-quality-audit.md). A
+verificação final de entrega está em
+[`docs/final-delivery-audit.md`](docs/final-delivery-audit.md) e o relatório de
+encerramento do projeto em
+[`docs/project-completion-report.md`](docs/project-completion-report.md).
 
 ## Estrutura
 

@@ -171,5 +171,6 @@ HTTP 429; é opt-in e não representa o padrão do CI.
 - O `.env` é apenas conveniência local; não é mecanismo de segredo.
 - O modo determinístico do gerador é usado nos testes unitários, mas a suíte
   funcional continua gerando dados novos a cada execução.
-- A validação de CI foi local/estática nesta etapa; não há alegação de execução
-  remota bem-sucedida.
+- A execução remota foi comprovada na ETAPA 19/20: o run `40757900849` passou
+  com a configuração versionada e o pacing de 300 ms; a validação desta seção
+  não substitui a leitura dos artefatos e anotações do run.

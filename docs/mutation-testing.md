@@ -4,12 +4,13 @@ Documento da **ETAPA 15**. Mede o quanto a suíte local detecta defeitos
 realmente introduzidos no código, complementando a cobertura de linhas com uma
 métrica de **qualidade das asserções**.
 
-> **Nota ETAPA 19 (2026-10-28):** os resultados de mutação abaixo são históricos
-> (123 testes offline, 312 mutantes na ETAPA 15) e **não foram reexecutados**
-> nesta auditoria. O dry-run do Stryker foi validado após a atualização do
-> lockfile (5 arquivos instrumentados, 720 mutantes, execução inicial
-> aprovada). A suíte atual tem 384 testes; a validação está em
-> [`integrated-quality-audit.md`](integrated-quality-audit.md).
+> **Nota ETAPA 20 (2026-10-28):** a execução completa do Stryker foi
+> reexecutada nesta entrega e reproduziu **97,22%** (700 de 720 mutantes
+> mortos, 20 sobreviventes classificados), sem erros ou timeouts, em 19 min
+> 56 s. A suíte offline usada pelo runner tem 123 testes; a regressão completa
+> do projeto tem 384 testes. Os resultados históricos da ETAPA 15 abaixo foram
+> preservados; a evidência final está em
+> [`final-delivery-audit.md`](final-delivery-audit.md).
 
 ## 1. Objetivo
 

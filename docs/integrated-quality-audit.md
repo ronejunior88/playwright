@@ -29,6 +29,8 @@ limitações sem inventar resultados.
 5. Revisão de limpeza de recursos, sanitização de evidências e mensagens de erro.
 6. Atualização apenas dos documentos operacionais desatualizados; documentos
    históricos receberam nota de contexto em vez de reescrita.
+7. Execução do workflow no GitHub Actions em `Estudos`, com correção do limite
+   de taxa e confirmação final por meio da API pública de runs/anotações.
 
 ## 3. Estado inicial
 
@@ -60,7 +62,7 @@ limitações sem inventar resultados.
 | Desempenho | 4 endpoints GET, 5 amostras cada | 4/4, 20 amostras, sem SLA | Aprovado (diagnóstico) |
 | Mutation testing | Stryker e testes offline | Dry-run: 5 arquivos, 720 mutantes, execução inicial aprovada | Parcial |
 | Análise de impacto | Seleção por diff e fallback conservador | 43/43 | Aprovado |
-| CI/workflow | Typecheck, contratos, impacto, fallback e artefatos | Workflow inspecionado; execução remota pendente | Pendente |
+| CI/workflow | Typecheck, contratos, impacto, fallback e artefatos | Execução remota `40757900849`: sucesso; 384/384, 25/25, 5/5 e 78/78 | Aprovado |
 | Dependências | `npm audit` e lockfile | 0 vulnerabilidades após correção | Corrigido |
 | Documentação | Contagens, comandos, claims e links | Documentos operacionais atualizados | Corrigido |
 | Git | Diff, whitespace e escopo | Revisão final antes do commit | Aprovado |
@@ -77,7 +79,7 @@ limitações sem inventar resultados.
 | A6 | **P2** | `docs/regression-strategy.md` usava 265 testes, 240 sem tag, 56 contratos e tempos antigos. | Documento vs. execução atual | Contagens e tempos atualizados para 384/359/78. |
 | A7 | **P3** | Duas vulnerabilidades moderadas em dependências de desenvolvimento (Stryker → `typed-rest-client` 2.3.1 → `qs` 6.15.1). | `npm audit` | `npm audit fix` atualizou `qs` para 6.17.0 e `typed-rest-client` para 2.3.0; auditoria zerada. |
 | A8 | **P3** | Documentos históricos (cobertura, rastreabilidade, qualidade, mutação, segurança, impacto) podiam ser lidos como contagens atuais. | Notas de contexto ausentes | Notas da ETAPA 19 adicionadas, preservando o histórico. |
-| A9 | **P3** | A execução remota do GitHub Actions não foi comprovada nesta etapa. | Workflow inspecionado apenas localmente | Pendência explícita; não há alegação de CI remoto aprovado. |
+| A9 | **P2** | As duas primeiras execuções remotas do GitHub Actions falharam com **HTTP 429** durante a regressão completa, após 315 e 331 testes passarem. | Runs `40751737898` e `40756139740` | Pacing de 300 ms por requisição no CI, com override `0` na suíte de latência; a execução `40757900849` passou com 384/384. |
 | A10 | **P3** | O mutation testing completo não foi reexecutado; apenas o dry-run do Stryker. | `--dryRunOnly` | Região histórica preservada e limitação registrada. |
 
 ### Problemas procurados e não encontrados
@@ -111,7 +113,16 @@ limitações sem inventar resultados.
 - `npx stryker --version` e `npx stryker run --dryRunOnly` confirmaram que a
   ferramenta continua operacional.
 
-### 6.3 Documentação
+### 6.3 CI
+
+- O workflow passou a definir `API_REQUEST_INTERVAL_MS=300` para espaçar as
+  chamadas de API no CI e reduzir o risco de **429** na API pública.
+- A suíte de latência sobrescreve a variável para `0`, pois o atraso
+  artificial contaminaria as medições.
+- A regressão local é executada sem o atraso; a execução remota com pacing
+  passou com 384/384 em 4,9 min.
+
+### 6.4 Documentação
 
 - `docs/quality-gate.md`: 384/384, tempos atuais, registro da ETAPA 19 e
   esclarecimento do `continue-on-error` usado apenas na seleção de impacto.
@@ -139,6 +150,7 @@ limitações sem inventar resultados.
 | Smoke | `npm run test:smoke` | 5/5, ~6 s |
 | Críticos | `npm run test:criticos` | 25/25, ~57 s |
 | Regressão completa | `npm test` | **384/384**, 222 s |
+| CI remoto | GitHub Actions, run `40757900849` | **Sucesso**: 78/78 contratos, 5/5 smoke, 25/25 críticos e 384/384 completos (4,9 min); job em 6 min 37 s |
 | Relatório estruturado | `test-results/results.json` | `expected: 384`, `unexpected: 0`, `skipped: 0`, `flaky: 0` |
 | Latência | `npm run test:latencia` | 4/4, 20 amostras, ~17 s |
 | Stryker | `npx stryker run --dryRunOnly` | 5 arquivos, 720 mutantes instrumentados, execução inicial aprovada |
@@ -153,17 +165,20 @@ limitações sem inventar resultados.
   contratos locais e seleção por impacto com fallback conservador.
 - O `continue-on-error` existe apenas no passo de seleção; uma falha nele leva
   à regressão completa, não a uma execução vazia.
-- **A execução remota no GitHub Actions não foi realizada nesta etapa.** O
-  workflow foi inspecionado e os comandos foram validados localmente; não há
-  alegação de pipeline remoto aprovado.
+- **A execução remota foi comprovada.** As duas primeiras tentativas
+  (`40751737898` e `40756139740`) falharam por **HTTP 429** na API pública; a
+  correção de pacing foi enviada e a execução `40757900849` passou em
+  `Estudos`, com o job `test` concluído em 6 min 37 s.
+- Ajustar o pacing para `300` ms aumentou a duração da regressão no CI para
+  4,9 min, ainda dentro do timeout do workflow; localmente, sem pacing, a
+  referência permanece em 222 s.
 
 ## 9. Riscos residuais e pendências
 
 | Risco/Pendência | Severidade | Observação |
 | --- | --- | --- |
-| CI remoto não executado | P3 | Validar em `push`/`pull_request` na branch `Estudos`. |
 | Mutation testing completo não reexecutado | P3 | Dry-run aprovado; números de mutação são históricos da ETAPA 15. |
-| API pública compartilhada | P3 | Rate limit e indisponibilidade externas podem gerar 429/timeout; classificar como ambiente. |
+| API pública compartilhada | P3 | Rate limit e indisponibilidade externas ainda podem gerar 429/timeout; o pacing reduz o risco no CI, mas não elimina a dependência externa. |
 | Falha de cleanup | P3 | A limpeza não falha o teste; o relatório registra anotação `cleanup` e aviso no console. |
 | Sem lint/Prettier | P3 | Decisão de escopo documentada; o gate atual usa `tsc` e os testes. |
 
@@ -181,7 +196,7 @@ Nenhuma pendência P0/P1 permaneceu aberta após as correções.
 | Evidências de falha não expõem segredos | Atendido (sanitização coberta por testes) |
 | Dependências sem vulnerabilidades conhecidas | Atendido (npm audit = 0) |
 | Documentação operacional coerente com a suíte | Atendido |
-| CI remoto comprovado | Pendente (P3) |
+| CI remoto comprovado | Atendido (run `40757900849`, sucesso) |
 | Mutation testing completo reexecutado | Pendente (P3) |
 
 ## 11. Conclusão e status
@@ -193,6 +208,8 @@ falhas ou flaky; typecheck, contratos, segurança, impacto, latência, smoke e
 críticos passaram; a auditoria de dependências ficou limpa. As correções de
 limpeza reduzem o risco de resíduos na API pública compartilhada.
 
-As pendências são não bloqueantes e explicitamente registradas: execução remota
-do GitHub Actions e reexecução completa do mutation testing. Nenhuma delas foi
-declarada como aprovada sem evidência real.
+O CI remoto foi corrigido e validado: após duas falhas por 429, o pacing de
+300 ms foi aplicado e a execução `40757900849` passou com 384/384. A única
+pendência não bloqueante é a reexecução completa do mutation testing; o
+dry-run foi aprovado e os números históricos permanecem identificados como
+tais. Nenhum resultado foi declarado como aprovado sem evidência real.

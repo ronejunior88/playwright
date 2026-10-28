@@ -64,8 +64,9 @@ npm run report          # critérios 5 e 6, se houver falha
 Em CI o workflow `.github/workflows/playwright.yml` executa o typecheck e os
 contratos locais, calcula a seleção por impacto e, no modo completo, roda
 smoke → críticos → regressão completa (com `retries: 2` para tornar flaky
-visível no relatório). Um teste que só passa após retry é **instável**:
-investigar antes de aprovar.
+visível no relatório). As chamadas usam pacing de 300 ms para reduzir o risco
+de 429; a regressão completa leva cerca de 4,9 min no CI. Um teste que só passa
+após retry é **instável**: investigar antes de aprovar.
 
 ## 5. O que o gate não faz
 
@@ -87,5 +88,6 @@ investigar antes de aprovar.
 | 4 | `npm test` | 384/384 aprovados, 222 s | 2026-10-28 |
 | 5 | relatório estruturado | `flaky: 0`, `skipped: 0` | 2026-10-28 |
 | — | `npm run test:contratos` | 78/78 aprovados (sem rede) | 2026-10-28 |
+| — | GitHub Actions, run `40757900849` | Sucesso: 384/384 completos; 25/25 críticos, 5/5 smoke e 78/78 contratos | 2026-10-28 |
 
 **Estado: APROVADO.**

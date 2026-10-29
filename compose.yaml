@@ -1,0 +1,32 @@
+services:
+  validar:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: playwright-validar
+    working_dir: /app
+    environment:
+      - CI=true
+      - NODE_ENV=production
+      # API pública - usar apenas com dados sintéticos
+      - SERVE_REST_BASE_URL=${SERVE_REST_BASE_URL:-https://serverest.dev}
+      - API_TIMEOUT_MS=${API_TIMEOUT_MS:-30000}
+    volumes:
+      # Monta código fonte para facilitar desenvolvimento/validação
+      # node_modules permanece no container (instalado na imagem)
+      - .:/app:rw
+      # Volume nomeado para node_modules do Linux (evita conflito com Windows)
+      - node_modules:/app/node_modules
+      # Volumes para relatórios acessíveis no host
+      - ./test-results:/app/test-results:rw
+      - ./playwright-report:/app/playwright-report:rw
+      - ./reports:/app/reports:rw
+      - ./performance-results:/app/performance-results:rw
+    # Não publicar portas desnecessárias
+    # Não reiniciar automaticamente em caso de falha
+    restart: "no"
+    # Comando padrão pode ser sobrescrito
+    command: sh -c "npm run typecheck && npm run test:contratos"
+
+volumes:
+  node_modules:

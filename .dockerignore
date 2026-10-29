@@ -1,0 +1,48 @@
+# .dockerignore - Excluir arquivos desnecessários do contexto de build
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Ambiente e credenciais
+.env
+.env.*
+!.env.example
+
+# Relatórios e resultados
+test-results/
+playwright-report/
+blob-report/
+reports/
+performance-results/
+.playwright/
+playwright/.cache/
+playwright/.auth/
+
+# Mutation testing
+.stryker-tmp/
+
+# Logs
+*.log
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Temporários
+tmp/
+temp/
+*.tmp

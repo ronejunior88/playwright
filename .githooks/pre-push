@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Pre-push hook - bloqueia push se validações falharem
+# Executa dentro do Docker
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+echo "[pre-push] Iniciando validação local via Docker..."
+bash scripts/validar-local.sh --stage pre-push
+EXIT_CODE=$?
+
+if [ $EXIT_CODE -ne 0 ]; then
+  echo "[pre-push] BLOQUEADO: Validações falharam (código $EXIT_CODE)" >&2
+  echo "[pre-push] Corrija os erros antes de fazer push." >&2
+  exit $EXIT_CODE
+fi
+
+echo "[pre-push] Validações OK - push permitido"
+exit 0

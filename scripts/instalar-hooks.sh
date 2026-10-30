@@ -11,6 +11,15 @@ echo "[instalar-hooks] Instalando hooks Git..."
 # Verificar se já existe core.hooksPath personalizado
 CURRENT_HOOKS_PATH=$(git config core.hooksPath 2>/dev/null || echo "")
 if [ -n "$CURRENT_HOOKS_PATH" ]; then
+  if [ -d .githooks ]; then
+    HOOKS_DIR="$(cd .githooks && pwd -P)"
+    CURRENT_DIR="$(cd "$CURRENT_HOOKS_PATH" 2>/dev/null && pwd -P || true)"
+    if [ "$CURRENT_DIR" = "$HOOKS_DIR" ]; then
+      chmod +x .githooks/pre-commit .githooks/pre-push scripts/validar-local.sh 2>/dev/null || true
+      echo "[OK] Hooks já instalados: core.hooksPath = $CURRENT_HOOKS_PATH"
+      exit 0
+    fi
+  fi
   echo "[AVISO] core.hooksPath já configurado: $CURRENT_HOOKS_PATH"
   echo "[AVISO] Não sobrescrevendo sem autorização. Remova a configuração manualmente se desejar usar .githooks"
   exit 1

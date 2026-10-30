@@ -16,8 +16,9 @@ Esta infraestrutura permite executar as verificações obrigatórias do projeto 
 
 ### Imagem Docker
 - **Base:** `node:24.14.1-slim` (compatível com requisito >=24.14.1)
+- **Sistema:** `ca-certificates` e `git` (o Git é usado na análise de impacto do pre-push)
 - **Usuário:** Não-privilegiado (`appuser`)
-- **Dependências:** Instaladas com `npm ci --omit=optional` na imagem
+- **Dependências:** Instaladas com `npm ci --include=dev` na imagem (devDependencies + binários opcionais de plataforma, necessários ao TypeScript 7 no Linux)
 - **Código:** Montado via volume (`.:/app:rw`) com volume nomeado para `node_modules` do Linux (evita conflito com node_modules do Windows)
 - **Relatórios:** Montados em diretórios locais (`test-results/`, `playwright-report/`, `reports/`, `performance-results/`)
 

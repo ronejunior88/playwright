@@ -11,15 +11,20 @@ ENV NODE_ENV=production \
 WORKDIR /app
 
 # Instalar dependências do sistema mínimas necessárias
+# git é necessário para a análise de impacto do pre-push dentro do contêiner
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
+    git \
     && rm -rf /var/lib/apt/lists/*
+
+# O repositório é montado em /app; permitir que o usuário não-root o inspecione
+RUN git config --system --add safe.directory /app
 
 # Copiar apenas arquivos necessários para instalação de dependências (cache eficiente)
 COPY package.json package-lock.json ./
 
-# Instalar dependências de forma reproduzível
-RUN npm ci --omit=optional
+# Instalar dependências de forma reproduzível (devDependencies + binários opcionais de plataforma)
+RUN npm ci --include=dev
 
 # Copiar código fonte necessário para execução dos testes
 COPY tsconfig.json ./

@@ -43,12 +43,12 @@ Write-Host "[validar-local] Docker OK"
 
 if ($Stage -eq "pre-commit") {
   Write-Host "[validar-local] Executando: typecheck"
-  docker compose run --rm validar npm run typecheck
+  docker compose run --rm -T validar npm run typecheck
   exit $LASTEXITCODE
 }
 elseif ($Stage -eq "pre-push") {
-  Write-Host "[validar-local] Executando: typecheck + contratos locais"
-  docker compose run --rm validar sh -c "npm run typecheck && npm run test:contratos"
+  Write-Host "[validar-local] Executando: typecheck + contratos + análise de impacto + testes"
+  docker compose run --rm -T validar sh scripts/validar-container-pre-push.sh
   exit $LASTEXITCODE
 }
 else {

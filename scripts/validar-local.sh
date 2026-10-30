@@ -46,33 +46,14 @@ echo "[validar-local] Docker OK"
 
 # Determinar comando a executar dentro do container
 if [[ "$STAGE" == "pre-commit" ]]; then
-  echo "[validar-local] Executando: typecheck (+ contratos locais se seguros)"
+  echo "[validar-local] Executando: typecheck"
   # Pre-commit: rápido - typecheck obrigatório
-  docker compose run --rm validar sh -c "npm run typecheck"
+  docker compose run --rm -T validar sh -c "npm run typecheck"
   exit $?
 elif [[ "$STAGE" == "pre-push" ]]; then
-  echo "[validar-local] Executando: typecheck + análise de impacto + testes selecionados"
-  # Pre-push: typecheck + contratos locais + análise de impacto
-  docker compose run --rm validar sh -c "
-    set -e
-    echo '=== TYPECHECK ==='
-    npm run typecheck
-    echo '=== CONTRATOS LOCAIS ==='
-    npm run test:contratos
-    echo '=== ANALISE DE IMPACTO ==='
-    # Tentar obter arquivos alterados em relação à branch remota
-    BASE_REF=\$(git merge-base HEAD origin/Estudos 2>/dev/null || git merge-base HEAD origin/Master 2>/dev/null || echo HEAD~1)
-    if git diff --name-only \$BASE_REF HEAD > /tmp/alterados.txt 2>/dev/null && [ -s /tmp/alterados.txt ]; then
-      node scripts/selecionar-testes.js --arquivos /tmp/alterados.txt --json || {
-        echo '[AVISO] Análise de impacto falhou - executando regressão completa por precaução'
-        npm run test:api || exit \$?
-      }
-      # Se análise retornou testes, tentar executar (simplificado - depende do formato)
-      # Por segurança, se análise falhar ou for completa, executar suite completa
-    else
-      echo '[AVISO] Sem alterações detectáveis ou sem histórico remoto - verificações básicas OK'
-    fi
-  "
+  echo "[validar-local] Executando: typecheck + contratos + análise de impacto + testes"
+  # Pre-push: validações completas e regressão direcionada/completa
+  docker compose run --rm -T validar sh scripts/validar-container-pre-push.sh
   exit $?
 else
   echo "[ERRO] Stage inválido: $STAGE" >&2

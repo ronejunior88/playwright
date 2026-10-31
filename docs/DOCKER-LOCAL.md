@@ -54,7 +54,7 @@ Os hooks ficam versionados em `.githooks/` e são ativados por `core.hooksPath` 
 | `pre-push` (fallback) | Sem referência base confiável ou falha na seleção | Executa a regressão completa (`npm run test:api`) por precaução |
 | Ambos | Docker ausente ou indisponível | Retornam código diferente de zero e bloqueiam a operação |
 
-O `pre-push` usa `origin/Estudos`, `origin/Master` ou `HEAD~1` como base para a análise de impacto. Quando nenhuma base está disponível, ou quando a seleção não pode ser calculada, a regressão completa é executada. O bypass com `--no-verify` não é recomendado; as validações também devem permanecer no CI.
+O `pre-push` usa o upstream da branch atual ou `origin/<branch>`, com fallback para `origin/Estudos`, `origin/Master` e `origin/master`, como base para a análise de impacto. Quando nenhuma base remota está disponível, ou quando a seleção não pode ser calculada, a regressão completa é executada por precaução. O diff usa `git diff --name-status -M`, portanto exclusões e renomeações são classificadas corretamente. O bypass com `--no-verify` não é recomendado; as validações também devem permanecer no CI.
 
 ## Comandos
 
@@ -99,14 +99,18 @@ docker compose run --rm validar npm run test:api
 
 ### Executar análise de impacto (apenas seleção)
 ```bash
-# scripts/selecionar-testes.js analisa impacto, não executa testes diretamente
-docker compose run --rm validar npm run impacto -- --help
+# Modo completo explícito (não executa testes)
+docker compose run --rm -T validar npm run impacto -- --completa --motivo "verificação manual"
+
+# A partir de uma lista de alterações no formato do git diff --name-status -M
+docker compose run --rm -T validar sh -c \
+  'git diff --name-status -M origin/Estudos...HEAD > /tmp/alterados.txt && node scripts/selecionar-testes.js --arquivos /tmp/alterados.txt'
 ```
 
 ## Acessar relatórios
 
 Os relatórios são gerados nos volumes montados e ficam acessíveis no host:
-- `./test-results/` - Resultados JSON/XML
+- `./test-results/` - Resultados JSON e artefatos do Playwright (`results.json`, traces)
 - `./playwright-report/` - Relatório HTML do Playwright
 - `./reports/` - Relatórios diversos
 - `./performance-results/` - Resultados de performance
@@ -164,6 +168,66 @@ Com WSL2 backend, geralmente não há problemas. Se houver, verifique permissõe
 | **Testes** | Falhas em testes Playwright (asserções) |
 | **Conectividade** | ECONNREFUSED, timeout, DNS, HTTP 429 em massa |
 
+## Diagnóstico e recuperação
+
+### Logs e códigos de saída
+
+Os hooks exibem a saída no terminal do Git. As mensagens usam prefixos para facilitar a identificação:
+
+- `[validar-local]` - validação no host e resultado final.
+- `[TYPECHECK]`, `[CONTRATOS]`, `[ANALISE]`, `[TESTES]`, `[LATENCIA]` - etapa executada e resultado (`APROVADO`/`REPROVADO`), com duração.
+- `[PRECAUCAO]` - motivo do fallback para regressão completa.
+- `[ERRO]` / `[AVISO]` - falha de infraestrutura ou configuração.
+
+Códigos de saída:
+
+- `0` - validação aprovada.
+- `1` - validação reprovada (typecheck, contratos ou testes).
+- `2` - argumento ou stage inválido.
+- `127` - Docker, Docker Compose ou daemon indisponível.
+
+### Interrupção ou container preso
+
+```bash
+docker compose down
+docker compose run --rm -T validar
+```
+
+`docker compose down` não remove o volume nomeado `node_modules`. Se o volume estiver corrompido ou incompatível, remova-o e reconstrua:
+
+```bash
+docker compose down -v
+docker compose build
+```
+
+### Verificar ou restaurar os hooks
+
+```bash
+git config --local --get core.hooksPath
+git config --global --get core.hooksPath
+ls -l .githooks/pre-commit .githooks/pre-push
+```
+
+Se `core.hooksPath` estiver incorreto:
+
+```bash
+git config --local core.hooksPath .githooks
+```
+
+Se os arquivos de hook estiverem ausentes:
+
+```bash
+git checkout -- .githooks
+```
+
+Para remover apenas a configuração local:
+
+```bash
+git config --local --unset core.hooksPath
+```
+
+Não altere `core.hooksPath` global; o instalador não sobrescreve configuração global.
+
 ## Segurança
 
 - Sem arquivos `.env` copiados para imagem
@@ -183,6 +247,9 @@ A infraestrutura Docker e os Git hooks estão instalados e validados:
 - Falhas dentro do container propagam código diferente de zero.
 - `pre-commit` bloqueia commits com erro de typecheck e quando o Docker está indisponível.
 - `pre-push` executa validação direcionada, bloqueia pushes inválidos e aplica regressão completa no fallback.
+- A análise de impacto do `pre-push` usa `--name-status -M`, trata renomeações/exclusões e não usa `HEAD~1`; sem base remota, aplica regressão completa.
+- Os instaladores falham de forma explícita quando `core.hooksPath` aponta para `.githooks` sem os hooks versionados.
+- A validação host verifica o daemon (`docker info`) antes de executar o container.
 - O instalador preserva `core.hooksPath` personalizado/global e não sobrescreve configurações existentes.
 
 Para reinstalar ou remover os hooks, use os comandos da seção **Git hooks**.

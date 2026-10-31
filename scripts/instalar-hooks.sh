@@ -38,6 +38,10 @@ is_our_hooks_path() {
   [ -n "$candidate_dir" ] && [ "$candidate_dir" = "$hooks_dir" ]
 }
 
+hooks_present() {
+  [ -f .githooks/pre-commit ] && [ -f .githooks/pre-push ]
+}
+
 LOCAL_HOOKS_PATH="$(git config --local --get core.hooksPath 2>/dev/null || true)"
 GLOBAL_HOOKS_PATH="$(git config --global --get core.hooksPath 2>/dev/null || true)"
 
@@ -76,6 +80,11 @@ fi
 
 if [ -n "$LOCAL_HOOKS_PATH" ]; then
   if is_our_hooks_path "$LOCAL_HOOKS_PATH"; then
+    if ! hooks_present; then
+      echo "[ERRO] core.hooksPath aponta para .githooks, mas os hooks versionados estão ausentes." >&2
+      echo "[ERRO] Restaure .githooks/pre-commit e .githooks/pre-push (git checkout -- .githooks)." >&2
+      exit 1
+    fi
     chmod +x .githooks/pre-commit .githooks/pre-push scripts/validar-local.sh 2>/dev/null || true
     echo "[OK] Hooks já instalados: core.hooksPath = $LOCAL_HOOKS_PATH"
     exit 0
@@ -87,6 +96,12 @@ fi
 
 if [ ! -d ".githooks" ]; then
   echo "[ERRO] Diretório .githooks não encontrado" >&2
+  exit 1
+fi
+
+if ! hooks_present; then
+  echo "[ERRO] Hooks versionados ausentes em .githooks (pre-commit/pre-push)." >&2
+  echo "[ERRO] Restaure os arquivos antes de instalar (git checkout -- .githooks)." >&2
   exit 1
 fi
 

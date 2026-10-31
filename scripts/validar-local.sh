@@ -36,24 +36,44 @@ if ! docker compose version >/dev/null 2>&1; then
   exit 127
 fi
 
+# Verificar se o daemon está acessível
+if ! docker info >/dev/null 2>&1; then
+  echo "[ERRO] Docker daemon indisponível ou sem permissão de acesso. Inicie o Docker Desktop/Engine e tente novamente." >&2
+  exit 127
+fi
+
 # Verificar se arquivo compose existe
 if [[ ! -f "compose.yaml" && ! -f "docker-compose.yml" ]]; then
   echo "[ERRO] compose.yaml/docker-compose.yml não encontrado." >&2
   exit 127
 fi
 
-echo "[validar-local] Docker OK"
+echo "[validar-local] Docker e daemon OK"
+
+executar_container() {
+  descricao="$1"
+  shift
+  echo "[validar-local] Executando: $descricao"
+  inicio="$(date +%s)"
+  if docker compose run --rm -T validar "$@"; then
+    echo "[validar-local] APROVADO ($(( $(date +%s) - inicio ))s)"
+    return 0
+  else
+    codigo=$?
+    echo "[validar-local] REPROVADO (código $codigo, $(( $(date +%s) - inicio ))s)" >&2
+    echo "[validar-local] Ação recomendada: verifique a saída acima e o estado do Docker." >&2
+    return "$codigo"
+  fi
+}
 
 # Determinar comando a executar dentro do container
 if [[ "$STAGE" == "pre-commit" ]]; then
-  echo "[validar-local] Executando: typecheck"
   # Pre-commit: rápido - typecheck obrigatório
-  docker compose run --rm -T validar sh -c "npm run typecheck"
+  executar_container "typecheck" sh -c "npm run typecheck"
   exit $?
 elif [[ "$STAGE" == "pre-push" ]]; then
-  echo "[validar-local] Executando: typecheck + contratos + análise de impacto + testes"
   # Pre-push: validações completas e regressão direcionada/completa
-  docker compose run --rm -T validar sh scripts/validar-container-pre-push.sh
+  executar_container "typecheck + contratos + análise de impacto + testes" sh scripts/validar-container-pre-push.sh
   exit $?
 else
   echo "[ERRO] Stage inválido: $STAGE" >&2

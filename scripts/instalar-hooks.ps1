@@ -51,6 +51,12 @@ function Test-IsOurHooksPath {
   }
 }
 
+function Test-HooksPresent {
+  $preCommit = Join-Path $repoRoot ".githooks\pre-commit"
+  $prePush = Join-Path $repoRoot ".githooks\pre-push"
+  return (Test-Path -LiteralPath $preCommit -PathType Leaf) -and (Test-Path -LiteralPath $prePush -PathType Leaf)
+}
+
 if ($Uninstall) {
   Write-Host "[instalar-hooks] Removendo hooks Git (somente configuração local)..." -ForegroundColor Cyan
 
@@ -95,6 +101,11 @@ if ($globalHooksPath) {
 $currentHooksPath = Get-HooksPathValue "local"
 if ($currentHooksPath) {
   if (Test-IsOurHooksPath $currentHooksPath) {
+    if (-not (Test-HooksPresent)) {
+      Write-Host "[ERRO] core.hooksPath aponta para .githooks, mas os hooks versionados estão ausentes." -ForegroundColor Red
+      Write-Host "[ERRO] Restaure .githooks/pre-commit e .githooks/pre-push (git checkout -- .githooks)." -ForegroundColor Red
+      exit 1
+    }
     Write-Host "[OK] Hooks já instalados: core.hooksPath = $currentHooksPath" -ForegroundColor Green
     exit 0
   }
@@ -105,6 +116,12 @@ if ($currentHooksPath) {
 
 if (-not (Test-Path ".githooks")) {
   Write-Host "[ERRO] Diretório .githooks não encontrado" -ForegroundColor Red
+  exit 1
+}
+
+if (-not (Test-HooksPresent)) {
+  Write-Host "[ERRO] Hooks versionados ausentes em .githooks (pre-commit/pre-push)." -ForegroundColor Red
+  Write-Host "[ERRO] Restaure os arquivos antes de instalar (git checkout -- .githooks)." -ForegroundColor Red
   exit 1
 }
 

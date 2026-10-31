@@ -2,9 +2,9 @@
 
 ## Objetivo
 
-Esta infraestrutura permite executar as verificações obrigatórias do projeto (typecheck e testes de contrato locais) dentro de um container Docker Linux, garantindo ambiente reproduzível entre desenvolvedores e preparando para bloqueios via Git hooks nas próximas etapas.
+Esta infraestrutura permite executar as verificações obrigatórias do projeto (typecheck e testes de contrato locais) dentro de um container Docker Linux, garantindo ambiente reproduzível entre desenvolvedores. Ela também é usada pelos Git hooks instalados para bloquear commit e push quando as validações falham.
 
-**Importante:** Esta etapa B implementa APENAS a infraestrutura Docker. Os hooks Git **não** foram instalados.
+**Hooks instalados:** o repositório usa `core.hooksPath = .githooks` (configuração local). Os hooks `pre-commit` e `pre-push` chamam `scripts/validar-local.sh` e exigem o Docker em execução. A instalação é feita por `./scripts/instalar-hooks.ps1` no Windows ou `./scripts/instalar-hooks.sh` no Git Bash/Linux.
 
 ## Pré-requisitos
 
@@ -28,6 +28,33 @@ Esta infraestrutura permite executar as verificações obrigatórias do projeto 
 - **Portas:** Nenhuma publicada
 - **Rede:** Padrão (sem serviços externos obrigatórios)
 - **Volumes:** Código + node_modules Linux + diretórios de relatórios
+
+## Git hooks
+
+Os hooks ficam versionados em `.githooks/` e são ativados por `core.hooksPath` local. Eles não alteram a configuração global e o instalador não sobrescreve um `core.hooksPath` personalizado.
+
+### Instalar ou desinstalar
+
+```bash
+# Windows (PowerShell)
+./scripts/instalar-hooks.ps1
+./scripts/instalar-hooks.ps1 -Uninstall
+
+# Git Bash / Linux
+./scripts/instalar-hooks.sh
+./scripts/instalar-hooks.sh --uninstall
+```
+
+### Comportamento
+
+| Hook | Validação | Efeito |
+|---|---|---|
+| `pre-commit` | `npm run typecheck` no container | Bloqueia o commit quando o typecheck falha |
+| `pre-push` | Typecheck, contratos locais, análise de impacto e testes selecionados | Bloqueia o push quando qualquer validação falha |
+| `pre-push` (fallback) | Sem referência base confiável ou falha na seleção | Executa a regressão completa (`npm run test:api`) por precaução |
+| Ambos | Docker ausente ou indisponível | Retornam código diferente de zero e bloqueiam a operação |
+
+O `pre-push` usa `origin/Estudos`, `origin/Master` ou `HEAD~1` como base para a análise de impacto. Quando nenhuma base está disponível, ou quando a seleção não pode ser calculada, a regressão completa é executada. O bypass com `--no-verify` não é recomendado; as validações também devem permanecer no CI.
 
 ## Comandos
 
@@ -110,7 +137,7 @@ docker compose run --rm validar
 ## Solução de problemas
 
 ### Docker não disponível
-Se `docker` ou `docker compose` não forem encontrados, instale o Docker Desktop ou Docker Engine. **Não** altere configurações do sistema - apenas instale conforme necessário.
+Se `docker` ou `docker compose` não forem encontrados, instale o Docker Desktop ou Docker Engine. **Não** altere configurações do sistema - apenas instale conforme necessário. Com os hooks instalados, a ausência do Docker bloqueia intencionalmente o commit e o push; inicie o Docker Desktop e execute a validação novamente.
 
 ### Falha ao construir imagem
 - Verifique conexão com internet
@@ -147,8 +174,15 @@ Com WSL2 backend, geralmente não há problemas. Se houver, verifique permissõe
 - Apenas dados sintéticos nos testes
 - Volumes montados localmente controlados
 
-## Próximas etapas
+## Estado atual da validação
 
-Esta infraestrutura está pronta para ser utilizada pelos Git hooks (pre-commit/pre-push) nas próximas etapas, com propagação correta de códigos de saída.
+A infraestrutura Docker e os Git hooks estão instalados e validados:
 
-**Não foram instalados hooks nesta etapa.**
+- `docker compose build` conclui com sucesso.
+- Typecheck dentro do container retorna código `0`.
+- Falhas dentro do container propagam código diferente de zero.
+- `pre-commit` bloqueia commits com erro de typecheck e quando o Docker está indisponível.
+- `pre-push` executa validação direcionada, bloqueia pushes inválidos e aplica regressão completa no fallback.
+- O instalador preserva `core.hooksPath` personalizado/global e não sobrescreve configurações existentes.
+
+Para reinstalar ou remover os hooks, use os comandos da seção **Git hooks**.

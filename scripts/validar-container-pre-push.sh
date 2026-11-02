@@ -13,6 +13,7 @@ executar_etapa() {
   descricao="$2"
   shift 2
   echo "[$nome] Iniciando: $descricao"
+  echo "[$nome] Comando: $*"
   inicio="$(date +%s)"
   if "$@"; then
     echo "[$nome] APROVADO ($(( $(date +%s) - inicio ))s)"
@@ -20,7 +21,9 @@ executar_etapa() {
   else
     codigo=$?
     echo "[$nome] REPROVADO (código $codigo, $(( $(date +%s) - inicio ))s)" >&2
-    echo "[VALIDACAO LOCAL] Execução bloqueada na etapa $nome (código $codigo)." >&2
+    echo "[VALIDACAO LOCAL] Execução bloqueada" >&2
+    echo "[VALIDACAO LOCAL] Código de saída: $codigo" >&2
+    echo "[VALIDACAO LOCAL] Motivo: Falha na etapa $nome" >&2
     echo "[VALIDACAO LOCAL] Ação recomendada: corrija a falha acima e execute novamente." >&2
     exit "$codigo"
   fi

@@ -14,12 +14,16 @@ try {
 }
 Set-Location $repoRoot
 
+Write-Host "[VALIDACAO LOCAL] Iniciando validação por Docker"
 Write-Host "[validar-local] Stage: $Stage"
 Write-Host "[validar-local] Repo: $repoRoot"
 
 # Verificar Docker
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
   Write-Host "[ERRO] Docker não encontrado no PATH." -ForegroundColor Red
+  Write-Host "[VALIDACAO LOCAL] Execução bloqueada" -ForegroundColor Red
+  Write-Host "[VALIDACAO LOCAL] Código de saída: 127" -ForegroundColor Red
+  Write-Host "[VALIDACAO LOCAL] Motivo: Docker não instalado" -ForegroundColor Red
   exit 127
 }
 
@@ -38,20 +42,32 @@ try {
 
 if ($codigoVersao -ne 0) {
   Write-Host "[ERRO] Docker não encontrado no PATH." -ForegroundColor Red
+  Write-Host "[VALIDACAO LOCAL] Execução bloqueada" -ForegroundColor Red
+  Write-Host "[VALIDACAO LOCAL] Código de saída: 127" -ForegroundColor Red
+  Write-Host "[VALIDACAO LOCAL] Motivo: Docker não instalado" -ForegroundColor Red
   exit 127
 }
 if ($codigoCompose -ne 0) {
   Write-Host "[ERRO] 'docker compose' não disponível." -ForegroundColor Red
+  Write-Host "[VALIDACAO LOCAL] Execução bloqueada" -ForegroundColor Red
+  Write-Host "[VALIDACAO LOCAL] Código de saída: 127" -ForegroundColor Red
+  Write-Host "[VALIDACAO LOCAL] Motivo: Docker Compose indisponível" -ForegroundColor Red
   exit 127
 }
 if ($codigoInfo -ne 0) {
   Write-Host "[ERRO] Docker daemon indisponível ou sem permissão de acesso. Inicie o Docker Desktop/Engine e tente novamente." -ForegroundColor Red
+  Write-Host "[VALIDACAO LOCAL] Execução bloqueada" -ForegroundColor Red
+  Write-Host "[VALIDACAO LOCAL] Código de saída: 127" -ForegroundColor Red
+  Write-Host "[VALIDACAO LOCAL] Motivo: Docker daemon indisponível" -ForegroundColor Red
   exit 127
 }
 
 # Verificar compose
 if (-not (Test-Path "compose.yaml") -and -not (Test-Path "docker-compose.yml")) {
   Write-Host "[ERRO] compose.yaml/docker-compose.yml não encontrado." -ForegroundColor Red
+  Write-Host "[VALIDACAO LOCAL] Execução bloqueada" -ForegroundColor Red
+  Write-Host "[VALIDACAO LOCAL] Código de saída: 127" -ForegroundColor Red
+  Write-Host "[VALIDACAO LOCAL] Motivo: Arquivo compose.yaml/docker-compose.yml não encontrado" -ForegroundColor Red
   exit 127
 }
 
@@ -63,6 +79,8 @@ function Invoke-Container {
     [string[]]$Argumentos
   )
   Write-Host "[validar-local] Executando: $Descricao"
+  $cmdStr = "docker compose run --rm -T validar " + ($Argumentos -join " ")
+  Write-Host "[validar-local] Comando: $cmdStr"
   $inicio = Get-Date
   $anterior = $ErrorActionPreference
   $ErrorActionPreference = "Continue"
@@ -77,6 +95,9 @@ function Invoke-Container {
     Write-Host "[validar-local] APROVADO (${duracao}s)" -ForegroundColor Green
   } else {
     Write-Host "[validar-local] REPROVADO (código $codigo, ${duracao}s)" -ForegroundColor Red
+    Write-Host "[VALIDACAO LOCAL] Execução bloqueada" -ForegroundColor Red
+    Write-Host "[VALIDACAO LOCAL] Código de saída: $codigo" -ForegroundColor Red
+    Write-Host "[VALIDACAO LOCAL] Motivo: Falha na execução do container" -ForegroundColor Red
     Write-Host "[validar-local] Ação recomendada: verifique a saída acima e o estado do Docker." -ForegroundColor Yellow
   }
   return $codigo

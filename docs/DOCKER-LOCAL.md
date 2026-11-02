@@ -174,7 +174,8 @@ Com WSL2 backend, geralmente não há problemas. Se houver, verifique permissõe
 
 Os hooks exibem a saída no terminal do Git. As mensagens usam prefixos para facilitar a identificação:
 
-- `[validar-local]` - validação no host e resultado final.
+- `[VALIDACAO LOCAL]` - início/fim, bloqueio, código de saída e motivo da falha.
+- `[validar-local]` - validação no host e resultado final (comando executado, duração).
 - `[TYPECHECK]`, `[CONTRATOS]`, `[ANALISE]`, `[TESTES]`, `[LATENCIA]` - etapa executada e resultado (`APROVADO`/`REPROVADO`), com duração.
 - `[PRECAUCAO]` - motivo do fallback para regressão completa.
 - `[ERRO]` / `[AVISO]` - falha de infraestrutura ou configuração.
@@ -184,7 +185,7 @@ Códigos de saída:
 - `0` - validação aprovada.
 - `1` - validação reprovada (typecheck, contratos ou testes).
 - `2` - argumento ou stage inválido.
-- `127` - Docker, Docker Compose ou daemon indisponível.
+- `127` - Docker, Docker Compose, daemon indisponível ou arquivos de configuração ausentes.
 
 ### Interrupção ou container preso
 
